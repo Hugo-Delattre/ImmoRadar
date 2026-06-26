@@ -1,0 +1,41 @@
+# --- Global ---
+.DS_Store
+.env
+.env.*
+!.env.example
+*.log
+
+# --- Agents ---
+.agents/memory/
+.agents/temp/
+
+# --- Angular ---
+node_modules/
+dist/
+.angular/
+coverage/
+
+# --- Maven / Spring Boot ---
+target/
+*.jar
+*.war
+*.zip
+*.tar.gz
+*.ear
+.mvn/wrapper/maven-wrapper.jar
+!/.mvn/wrapper/maven-wrapper.properties
+
+# --- IntelliJ ---
+.idea/
+*.iml
+*.iws
+
+# --- VSCode ---
+.vscode/
+
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.tfstate.lock.info
+crash.log
