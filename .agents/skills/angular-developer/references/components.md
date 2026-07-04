@@ -113,5 +113,6 @@ state like 'standby' is added }
 - **Host Element**: The DOM element that matches the component's selector.
 - **View**: The DOM rendered by the component's template inside the host element.
 - **Standalone**: By default, components are standalone (since Angular 19, `standalone: true` is default). For older versions, `standalone: true` must be explicit or the component must be part of an `NgModule`.
+- **Change Detection**: In Angular 22+, the default change detection strategy is `ChangeDetectionStrategy.OnPush` for new components.
 - **Component Tree**: Angular applications are structured as a tree of components, where each component can host child components.
 - **Component Naming**: Do not add suffixes the `Component` suffix for Component classes (e.g., AppComponent) unless the project has been configured to use that naming configuration.

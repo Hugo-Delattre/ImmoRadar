@@ -1,0 +1,15 @@
+/* Styles personnalisés pour le module Deal Finder */
+.max-h-\[600px\] {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(51 65 85) transparent;
+}
+.max-h-\[600px\]::-webkit-scrollbar {
+  width: 6px;
+}
+.max-h-\[600px\]::-webkit-scrollbar-track {
+  background: transparent;
+}
+.max-h-\[600px\]::-webkit-scrollbar-thumb {
+  background-color: rgb(51 65 85);
+  border-radius: 3px;
+}
