@@ -1,4 +1,4 @@
-# 📋 Cahier des Charges & Roadmap Produit — ImmoManager
+# 📋 Product Requirements Document (PRD) & Roadmap — ImmoManager
 
 > **Objectif** : Transformer le prototype initial d'**ImmoManager** en un SaaS d'investissement immobilier à forte valeur ajoutée client et en un projet de référence technique démontrant un niveau **Ingénieur Senior / Tech Lead** (Java 25, Spring Boot 4.1, Angular 22, GraalVM, Cloud Serverless).
 
