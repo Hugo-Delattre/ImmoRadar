@@ -55,9 +55,6 @@ flowchart TD
     AsyncTasks -.->|"Lien de téléchargement sécurisé"| Frontend
 ```
 
-> 📌 *Une version statique haute résolution du schéma est également disponible dans le dossier de documentation :*  
-> `docs/immo_schema.png`
-
 ---
 
 ## ⚡ Démarrage Rapide (1 seule commande avec Docker)

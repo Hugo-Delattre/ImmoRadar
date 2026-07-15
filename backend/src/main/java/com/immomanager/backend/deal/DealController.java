@@ -1,6 +1,7 @@
 package com.immomanager.backend.deal;
 
 import org.jspecify.annotations.Nullable;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -10,6 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/deals")
+@CrossOrigin(origins = "*")
 public class DealController {
 
     private final DealService dealService;
