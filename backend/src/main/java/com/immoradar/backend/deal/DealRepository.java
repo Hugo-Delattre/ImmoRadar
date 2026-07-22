@@ -1,4 +1,4 @@
-package com.immomanager.backend.deal;
+package com.immoradar.backend.deal;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

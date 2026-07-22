@@ -1,4 +1,4 @@
-package com.immomanager.backend;
+package com.immoradar.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

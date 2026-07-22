@@ -1,6 +1,6 @@
-# 📋 Product Requirements Document (PRD) & Roadmap — ImmoManager
+# 📋 Product Requirements Document (PRD) & Roadmap — ImmoRadar
 
-> **Objectif** : Transformer le prototype initial d'**ImmoManager** en un SaaS d'investissement immobilier à forte valeur ajoutée client et en un projet de référence technique démontrant un niveau **Ingénieur Senior / Tech Lead** (Java 25, Spring Boot 4.1, Angular 22, GraalVM, Cloud Serverless).
+> **Objectif** : Transformer le prototype initial d'**ImmoRadar** en un SaaS d'investissement immobilier à forte valeur ajoutée client et en un projet de référence technique démontrant un niveau **Ingénieur Senior / Tech Lead** (Java 25, Spring Boot 4.1, Angular 22, GraalVM, Cloud Serverless).
 
 ---
 

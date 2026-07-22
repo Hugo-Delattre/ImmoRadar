@@ -1,18 +1,18 @@
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: immomanager-postgres
+    container_name: immoradar-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: immomanager
-      POSTGRES_USER: immomanager
-      POSTGRES_PASSWORD: immomanager_secret
+      POSTGRES_DB: immoradar
+      POSTGRES_USER: immoradar
+      POSTGRES_PASSWORD: immoradar_secret
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U immomanager -d immomanager"]
+      test: ["CMD-SHELL", "pg_isready -U immoradar -d immoradar"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,15 +21,15 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: immomanager-backend
+    container_name: immoradar-backend
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/immomanager
-      SPRING_DATASOURCE_USERNAME: immomanager
-      SPRING_DATASOURCE_PASSWORD: immomanager_secret
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/immoradar
+      SPRING_DATASOURCE_USERNAME: immoradar
+      SPRING_DATASOURCE_PASSWORD: immoradar_secret
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
@@ -40,7 +40,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: immomanager-frontend
+    container_name: immoradar-frontend
     restart: unless-stopped
     depends_on:
       - backend

@@ -1,4 +1,4 @@
 @NullMarked
-package com.immomanager.backend.deal;
+package com.immoradar.backend.deal;
 
 import org.jspecify.annotations.NullMarked;

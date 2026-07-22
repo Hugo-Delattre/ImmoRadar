@@ -1,4 +1,4 @@
-package com.immomanager.backend.deal;
+package com.immoradar.backend.deal;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.web.bind.annotation.CrossOrigin;

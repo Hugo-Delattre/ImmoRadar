@@ -1,4 +1,4 @@
-package com.immomanager.backend.deal;
+package com.immoradar.backend.deal;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

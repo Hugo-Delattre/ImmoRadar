@@ -1,4 +1,4 @@
-# 🏢 ImmoManager — Smart Real Estate Deal Finder & Investment Simulator
+# 🎯 ImmoRadar - Smart Real Estate Deal Finder & Investment Simulator
 
 [![Java 25](https://img.shields.io/badge/Java-25-orange.svg)](https://openjdk.org/)
 [![Spring Boot 4.1](https://img.shields.io/badge/Spring%20Boot-4.1.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -7,7 +7,7 @@
 [![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://docs.docker.com/compose/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **ImmoManager** est une plateforme SaaS d'analyse d'opportunités et d'optimisation d'investissements locatifs. Elle permet aux investisseurs particuliers, chasseurs immobiliers et conseillers en gestion de patrimoine de filtrer des opportunités réelles à haut rendement, de comparer les prix du marché avec les données officielles de l'État (**API DVF**), de simuler l'impact fiscal (LMNP Réel, Micro-BIC, SCI IS, Nu), et de générer un **dossier bancaire PDF complet** prêt à présenter aux établissements de crédit.
+> **ImmoRadar** est une plateforme SaaS d'analyse d'opportunités et d'optimisation d'investissements locatifs. Elle permet aux investisseurs particuliers, chasseurs immobiliers et conseillers en gestion de patrimoine de filtrer des opportunités réelles à haut rendement, de comparer les prix du marché avec les données officielles de l'État (**API DVF**), de simuler l'impact fiscal (LMNP Réel, Micro-BIC, SCI IS, Nu), et de générer un **dossier bancaire PDF complet** prêt à présenter aux établissements de crédit.
 
 ---
 
@@ -68,7 +68,7 @@ docker compose up --build
 Une fois les conteneurs démarrés :
 - 🌐 **Frontend (Angular)** : [http://localhost:4200](http://localhost:4200)
 - ⚙️ **Backend API (Spring Boot)** : [http://localhost:8080/api/deals](http://localhost:8080/api/deals)
-- 🗄️ **PostgreSQL** : `localhost:5432` (Base : `immomanager`, User : `immomanager`, Mot de passe : `immomanager_secret`)
+- 🗄️ **PostgreSQL** : `localhost:5432` (Base : `immoradar`, User : `immoradar`, Mot de passe : `immoradar_secret`)
 
 Pour arrêter l'ensemble :
 ```bash

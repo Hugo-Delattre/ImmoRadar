@@ -1,4 +1,4 @@
-package com.immomanager.backend.deal;
+package com.immoradar.backend.deal;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
