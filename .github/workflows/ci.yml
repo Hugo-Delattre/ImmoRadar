@@ -1,0 +1,63 @@
+name: ImmoRadar CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ==========================================
+  # BACKEND CI: Java 25 & Spring Boot 4.1
+  # ==========================================
+  backend-ci:
+    name: Backend (Java 25 & Spring Boot 4.1)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 25 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Grant Execute Permission for Maven Wrapper
+        run: chmod +x backend/mvnw
+
+      - name: Run Backend Tests & Package
+        working-directory: ./backend
+        run: ./mvnw clean test
+
+  # ==========================================
+  # FRONTEND CI: Angular 22 & Vitest
+  # ==========================================
+  frontend-ci:
+    name: Frontend (Angular 22 & Vitest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Check Angular Build (Production)
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Run Unit Tests (Vitest)
+        working-directory: ./frontend
+        run: npm test -- --run
