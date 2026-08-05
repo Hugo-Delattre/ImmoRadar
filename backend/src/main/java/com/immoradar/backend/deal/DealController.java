@@ -7,6 +7,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.immoradar.backend.deal.dto.CreateDealRequest;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
 import java.util.List;
 
 @RestController
@@ -27,5 +34,11 @@ public class DealController {
             @RequestParam(required = false) @Nullable Double cashflowMin,
             @RequestParam(required = false) @Nullable String location) {
         return dealService.getDeals(priceMax, yieldMin, cashflowMin, location);
+    }
+
+    @PostMapping
+    public ResponseEntity<Deal> createDeal(@RequestBody @Valid CreateDealRequest request) {
+        Deal created = dealService.createDeal(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 }

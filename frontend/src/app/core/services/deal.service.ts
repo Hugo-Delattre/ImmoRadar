@@ -1,106 +1,38 @@
-import { Service } from '@angular/core';
-import { Deal, DealFilters, SimulationInput, SimulationResult } from '../models/deal.model';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { Deal, DealFilters, SimulationInput, SimulationResult, CreateDealRequest } from '../models/deal.model';
 
-@Service()
+@Injectable({
+  providedIn: 'root'
+})
 export class DealService {
-  private readonly mockDeals: Deal[] = [
-    {
-      id: '1',
-      title: 'Immeuble de Rapport - 4 Lots',
-      price: 245000,
-      monthlyRent: 2150,
-      monthlyCharges: 180,
-      propertyTax: 1600,
-      renovationCost: 35000,
-      location: 'Saint-Étienne (42)',
-      surface: 140,
-      propertyType: 'Building',
-      description: 'Immeuble de rapport composé de 2 studios et 2 T2 en parfait état. Tous les lots sont actuellement loués. Compteurs électriques individuels. Faible taxe foncière.',
-      opportunityScore: 9.2,
-      imageUrl: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80'
-    },
-    {
-      id: '2',
-      title: 'Appartement T4 Spécial Colocation',
-      price: 135000,
-      monthlyRent: 1200,
-      monthlyCharges: 110,
-      propertyTax: 950,
-      renovationCost: 15000,
-      location: 'Limoges (87)',
-      surface: 78,
-      propertyType: 'Apartment',
-      description: 'Appartement T4 proche des facultés. Aménagé en 3 chambres pour colocation étudiante. Vendu entièrement meublé et équipé. Rendement optimal immédiat.',
-      opportunityScore: 8.8,
-      imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80'
-    },
-    {
-      id: '3',
-      title: 'Studio meublé hyper-centre',
-      price: 89000,
-      monthlyRent: 620,
-      monthlyCharges: 65,
-      propertyTax: 520,
-      renovationCost: 5000,
-      location: 'Mulhouse (68)',
-      surface: 24,
-      propertyType: 'Studio',
-      description: 'Studio entièrement rénové par un architecte d\'intérieur. Emplacement numéro 1, à 2 minutes à pied de la gare et des commerces. Idéal LMNP.',
-      opportunityScore: 8.4,
-      imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80'
-    },
-    {
-      id: '4',
-      title: 'Maison divisée en 2 appartements',
-      price: 195000,
-      monthlyRent: 1480,
-      monthlyCharges: 120,
-      propertyTax: 1250,
-      renovationCost: 20000,
-      location: 'Le Mans (72)',
-      surface: 115,
-      propertyType: 'House',
-      description: 'Maison de ville divisée en un T3 avec jardin privatif et un T2 à l\'étage. Entrées séparées. Fort potentiel de revente après découpe cadastrale officielle.',
-      opportunityScore: 7.9,
-      imageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'
-    },
-    {
-      id: '5',
-      title: 'Petit immeuble de centre-ville',
-      price: 310000,
-      monthlyRent: 2600,
-      monthlyCharges: 220,
-      propertyTax: 2100,
-      renovationCost: 45000,
-      location: 'Belfort (90)',
-      surface: 180,
-      propertyType: 'Building',
-      description: 'Immeuble de rapport comprenant 5 appartements. Toiture refaite en 2024. Travaux de rafraîchissement à prévoir sur 2 appartements pour optimiser les loyers.',
-      opportunityScore: 8.1,
-      imageUrl: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80'
-    }
-  ];
+  private readonly http = inject(HttpClient);
 
   async getDeals(filters: DealFilters): Promise<Deal[]> {
-    const queryParams = new URLSearchParams();
+    let params = new HttpParams();
     if (filters.priceMax !== undefined && filters.priceMax !== null) {
-      queryParams.append('priceMax', filters.priceMax.toString());
+      params = params.set('priceMax', filters.priceMax.toString());
     }
     if (filters.yieldMin !== undefined && filters.yieldMin !== null) {
-      queryParams.append('yieldMin', filters.yieldMin.toString());
+      params = params.set('yieldMin', filters.yieldMin.toString());
     }
     if (filters.cashflowMin !== undefined && filters.cashflowMin !== null) {
-      queryParams.append('cashflowMin', filters.cashflowMin.toString());
+      params = params.set('cashflowMin', filters.cashflowMin.toString());
     }
     if (filters.location) {
-      queryParams.append('location', filters.location);
+      params = params.set('location', filters.location);
     }
 
-    const response = await fetch(`/api/deals?${queryParams.toString()}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch deals from server');
-    }
-    return response.json();
+    return firstValueFrom(this.http.get<Deal[]>('/api/deals', { params }));
+  }
+
+  /**
+   * Envoi d'un POST HTTP avec HttpClient vers Spring Boot (REST API).
+   * En cas d'erreur de validation (400), Spring Boot retourne un ProblemDetail (RFC 7807).
+   */
+  async createDeal(request: CreateDealRequest): Promise<Deal> {
+    return firstValueFrom(this.http.post<Deal>('/api/deals', request));
   }
 
   calculateSimulation(deal: Deal, input: SimulationInput): SimulationResult {

@@ -47,4 +47,38 @@ public class DealService {
                 })
                 .toList();
     }
+
+    public Deal createDeal(com.immoradar.backend.deal.dto.CreateDealRequest request) {
+        String id = java.util.UUID.randomUUID().toString();
+
+        // Calcul automatique de l'Opportunity Score (0 à 10)
+        double grossYield = (request.monthlyRent() * 12) / request.price() * 100;
+        double netMonthly = request.monthlyRent() - request.monthlyCharges() - (request.propertyTax() / 12);
+        
+        double scoreYield = Math.min(5.0, (grossYield / 10.0) * 5.0);
+        double scoreCashflow = Math.min(5.0, Math.max(0, (netMonthly / 400.0) * 5.0));
+        double opportunityScore = Math.round((scoreYield + scoreCashflow) * 10.0) / 10.0;
+
+        String image = (request.imageUrl() != null && !request.imageUrl().isBlank()) 
+                ? request.imageUrl() 
+                : "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80";
+
+        Deal deal = new Deal(
+                id,
+                request.title(),
+                request.price(),
+                request.monthlyRent(),
+                request.monthlyCharges(),
+                request.propertyTax(),
+                request.renovationCost(),
+                request.location(),
+                request.surface(),
+                request.propertyType(),
+                request.description() != null ? request.description() : "",
+                opportunityScore,
+                image
+        );
+
+        return dealRepository.save(deal);
+    }
 }

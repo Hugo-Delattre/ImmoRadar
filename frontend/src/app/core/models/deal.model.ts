@@ -36,3 +36,28 @@ export interface SimulationResult {
   monthlyCashFlow: number;
   taxAnnual: number;
 }
+
+export interface CreateDealRequest {
+  title: string;
+  price: number;
+  monthlyRent: number;
+  monthlyCharges: number;
+  propertyTax: number;
+  renovationCost: number;
+  location: string;
+  surface: number;
+  propertyType: 'Studio' | 'Apartment' | 'Building' | 'House';
+  description: string;
+  imageUrl: string;
+}
+
+/** Structure standardisée RFC 7807 (Problem Details for HTTP APIs) */
+export interface ProblemDetail {
+  type: string;
+  title: string;
+  status: number;
+  detail: string;
+  instance?: string;
+  timestamp?: string;
+  invalidParams?: Record<string, string>;
+}

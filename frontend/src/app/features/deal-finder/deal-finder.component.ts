@@ -1,7 +1,7 @@
 import { Component, signal, computed, inject, resource } from '@angular/core';
 import { form, FormField } from '@angular/forms/signals';
 import { DealService } from '../../core/services/deal.service';
-import { Deal } from '../../core/models/deal.model';
+import { Deal, CreateDealRequest, ProblemDetail } from '../../core/models/deal.model';
 
 @Component({
   selector: 'app-deal-finder',
@@ -13,6 +13,28 @@ import { Deal } from '../../core/models/deal.model';
 export class DealFinderComponent {
   private readonly dealService = inject(DealService);
   protected readonly Math = Math;
+
+  // --- MODALE NOUVEAU DEAL & APPEL API ---
+  protected readonly isCreateModalOpen = signal(false);
+  protected readonly isSubmitting = signal(false);
+  protected readonly submitError = signal<string | null>(null);
+  protected readonly submitFieldErrors = signal<Record<string, string>>({});
+
+  protected readonly newDealModel = signal<CreateDealRequest>({
+    title: '',
+    price: 180000,
+    monthlyRent: 1350,
+    monthlyCharges: 110,
+    propertyTax: 950,
+    renovationCost: 12000,
+    location: '',
+    surface: 65,
+    propertyType: 'Apartment',
+    description: '',
+    imageUrl: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80'
+  });
+
+  protected readonly newDealForm = form(this.newDealModel);
 
   // --- FILTRES (Signal Forms) ---
   protected readonly filterModel = signal({
@@ -107,6 +129,45 @@ export class DealFinderComponent {
         ...sim,
         downpayment: amount
       }));
+    }
+  }
+
+  // --- ACTIONS API & MODALE ---
+  openCreateModal() {
+    this.submitError.set(null);
+    this.submitFieldErrors.set({});
+    this.isCreateModalOpen.set(true);
+  }
+
+  closeCreateModal() {
+    this.isCreateModalOpen.set(false);
+  }
+
+  async submitCreateDeal() {
+    this.isSubmitting.set(true);
+    this.submitError.set(null);
+    this.submitFieldErrors.set({});
+
+    try {
+      const created = await this.dealService.createDeal(this.newDealForm().value());
+      this.isCreateModalOpen.set(false);
+      // Recharger les données réactives de l'API
+      this.dealsResource.reload();
+      // Sélectionner automatiquement le nouveau deal
+      this.selectedDealId.set(created.id);
+    } catch (err: any) {
+      // Exploitation directe du standard RFC 7807 (ProblemDetail) renvoyé par Spring Boot
+      if (err?.error) {
+        const problem: ProblemDetail = err.error;
+        this.submitError.set(problem.detail || problem.title || 'Erreur lors de la création');
+        if (problem.invalidParams) {
+          this.submitFieldErrors.set(problem.invalidParams);
+        }
+      } else {
+        this.submitError.set('Impossible de contacter le serveur backend.');
+      }
+    } finally {
+      this.isSubmitting.set(false);
     }
   }
 }

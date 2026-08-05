@@ -14,6 +14,16 @@
     </div>
     
     <div class="flex items-center gap-4">
+      <button 
+        type="button" 
+        (click)="openCreateModal()"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-lg shadow-indigo-500/25 transition-all duration-200 cursor-pointer">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Nouveau Deal
+      </button>
+
       <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
         Analyseur en Temps Réel Actif
@@ -294,4 +304,124 @@
 
     </div>
   </div>
+
+  <!-- MODALE NOUVEAU DEAL (DÉMO APPEL API & PROBLEM DETAILS) -->
+  @if (isCreateModalOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <!-- Bouton Fermeture -->
+        <button (click)="closeCreateModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white p-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+
+        <div class="flex items-center gap-3 mb-6">
+          <div class="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white">Ajouter une opportunité</h3>
+            <p class="text-xs text-slate-400">Envoi via appel HTTP POST à l'API Spring Boot avec validation</p>
+          </div>
+        </div>
+
+        <!-- Alerte Erreur RFC 7807 ProblemDetail -->
+        @if (submitError()) {
+          <div class="mb-5 p-4 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs">
+            <div class="flex items-center gap-2 font-bold mb-1 text-rose-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>Erreur RFC 7807 renvoyée par le serveur :</span>
+            </div>
+            <p>{{ submitError() }}</p>
+          </div>
+        }
+
+        <form (ngSubmit)="submitCreateDeal()" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Titre de l'annonce</label>
+              <input type="text" [formField]="newDealForm.title" placeholder="ex: T2 rénové centre-ville" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+              @if (submitFieldErrors()['title']) {
+                <span class="text-[11px] text-rose-400 mt-1 block">{{ submitFieldErrors()['title'] }}</span>
+              }
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Type de bien</label>
+              <select [formField]="newDealForm.propertyType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                <option value="Apartment">Appartement</option>
+                <option value="Studio">Studio</option>
+                <option value="House">Maison</option>
+                <option value="Building">Immeuble de Rapport</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Prix d'achat (€)</label>
+              <input type="number" [formField]="newDealForm.price" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+              @if (submitFieldErrors()['price']) {
+                <span class="text-[11px] text-rose-400 mt-1 block">{{ submitFieldErrors()['price'] }}</span>
+              }
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Loyer mensuel estimé (€)</label>
+              <input type="number" [formField]="newDealForm.monthlyRent" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+              @if (submitFieldErrors()['monthlyRent']) {
+                <span class="text-[11px] text-rose-400 mt-1 block">{{ submitFieldErrors()['monthlyRent'] }}</span>
+              }
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Charges mensuelles (€)</label>
+              <input type="number" [formField]="newDealForm.monthlyCharges" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Taxe foncière (€/an)</label>
+              <input type="number" [formField]="newDealForm.propertyTax" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Travaux prévus (€)</label>
+              <input type="number" [formField]="newDealForm.renovationCost" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Surface habitable (m²)</label>
+              <input type="number" [formField]="newDealForm.surface" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Localisation (Ville / Code Postal)</label>
+              <input type="text" [formField]="newDealForm.location" placeholder="ex: Lyon (69007)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+              @if (submitFieldErrors()['location']) {
+                <span class="text-[11px] text-rose-400 mt-1 block">{{ submitFieldErrors()['location'] }}</span>
+              }
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Description</label>
+              <textarea [formField]="newDealForm.description" rows="2" placeholder="Détails sur l'opportunité, l'emplacement..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"></textarea>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
+            <button type="button" (click)="closeCreateModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 transition-colors">
+              Annuler
+            </button>
+            <button type="submit" [disabled]="isSubmitting()" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-lg shadow-indigo-500/20">
+              @if (isSubmitting()) {
+                <span class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span>Envoi API...</span>
+              } @else {
+                <span>Créer l'opportunité (POST)</span>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
 </div>
