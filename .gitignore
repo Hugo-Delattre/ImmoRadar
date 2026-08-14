@@ -14,9 +14,12 @@ node_modules/
 dist/
 .angular/
 coverage/
+playwright-report/
+test-results/
 
 # --- Maven / Spring Boot ---
 target/
+*.db
 *.jar
 *.war
 *.zip

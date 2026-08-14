@@ -11,6 +11,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "deals")
 @Getter @Setter
@@ -20,13 +22,19 @@ public class Deal {
     @Id
     private String id;
     private String title;
-    private double price;
-    private double monthlyRent;
-    private double monthlyCharges;
-    private double propertyTax;
-    private double renovationCost;
+    @Column(precision = 14, scale = 2, nullable = false)
+    private BigDecimal price;
+    @Column(precision = 14, scale = 2, nullable = false)
+    private BigDecimal monthlyRent;
+    @Column(precision = 14, scale = 2, nullable = false)
+    private BigDecimal monthlyCharges;
+    @Column(precision = 14, scale = 2, nullable = false)
+    private BigDecimal propertyTax;
+    @Column(precision = 14, scale = 2, nullable = false)
+    private BigDecimal renovationCost;
     private String location;
-    private double surface;
+    @Column(precision = 10, scale = 2, nullable = false)
+    private BigDecimal surface;
     
     @Enumerated(EnumType.STRING)
     private PropertyType propertyType;
@@ -36,4 +44,5 @@ public class Deal {
     
     private double opportunityScore;
     private String imageUrl;
+    private boolean favorite;
 }

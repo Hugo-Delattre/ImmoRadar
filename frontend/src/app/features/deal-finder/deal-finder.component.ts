@@ -1,24 +1,36 @@
-import { Component, signal, computed, inject, resource } from '@angular/core';
-import { form, FormField } from '@angular/forms/signals';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, computed, inject, resource, signal } from '@angular/core';
+import { FormField, form } from '@angular/forms/signals';
+import {
+  CreateDealRequest,
+  Deal,
+  ProblemDetail,
+  SimulationRequest,
+  TaxRegime,
+} from '../../core/models/deal.model';
 import { DealService } from '../../core/services/deal.service';
-import { Deal, CreateDealRequest, ProblemDetail } from '../../core/models/deal.model';
 
 @Component({
   selector: 'app-deal-finder',
   standalone: true,
   imports: [FormField],
   templateUrl: './deal-finder.component.html',
-  styleUrl: './deal-finder.component.scss'
+  styleUrl: './deal-finder.component.scss',
 })
 export class DealFinderComponent {
   private readonly dealService = inject(DealService);
-  protected readonly Math = Math;
+  private readonly currencyFormatter = new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  });
 
-  // --- MODALE NOUVEAU DEAL & APPEL API ---
   protected readonly isCreateModalOpen = signal(false);
   protected readonly isSubmitting = signal(false);
   protected readonly submitError = signal<string | null>(null);
   protected readonly submitFieldErrors = signal<Record<string, string>>({});
+  protected readonly favoritePendingId = signal<string | null>(null);
+  protected readonly selectedDealId = signal<string | null>(null);
 
   protected readonly newDealModel = signal<CreateDealRequest>({
     title: '',
@@ -31,143 +43,188 @@ export class DealFinderComponent {
     surface: 65,
     propertyType: 'Apartment',
     description: '',
-    imageUrl: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80'
+    imageUrl: '',
   });
-
   protected readonly newDealForm = form(this.newDealModel);
 
-  // --- FILTRES (Signal Forms) ---
   protected readonly filterModel = signal({
     priceMax: 400000,
-    yieldMin: 6,
-    cashflowMin: 200,
-    location: ''
+    yieldMin: 5,
+    cashflowMin: 0,
+    location: '',
+    favoritesOnly: false,
   });
-
   protected readonly filterForm = form(this.filterModel);
 
-  // --- SOURCE DE DONNÉES REACTIVE (Resource API) ---
   protected readonly dealsResource = resource({
     params: () => this.filterForm().value(),
-    loader: async ({ params }) => {
-      return this.dealService.getDeals(params);
-    }
+    loader: ({ params }) => this.dealService.getDeals(params),
   });
 
-  // --- SÉLECTION DE DEAL ---
-  protected readonly selectedDealId = signal<string | null>(null);
+  protected readonly deals = computed(() => this.dealsResource.value()?.content ?? []);
+  protected readonly totalDeals = computed(() => this.dealsResource.value()?.totalElements ?? 0);
 
   protected readonly selectedDeal = computed<Deal | null>(() => {
-    const deals = this.dealsResource.value();
-    if (!deals || deals.length === 0) return null;
-    
-    // Si aucun deal n'est sélectionné, sélectionner le premier par défaut
-    const currentId = this.selectedDealId();
-    if (!currentId) {
-      return deals[0];
-    }
-    return deals.find(d => d.id === currentId) ?? deals[0];
+    const deals = this.deals();
+    if (deals.length === 0) return null;
+    return deals.find((deal) => deal.id === this.selectedDealId()) ?? deals[0];
   });
 
-  // --- SIMULATION FINANCIÈRE (Signal Forms & Computed) ---
   protected readonly simulationModel = signal({
     downpayment: 30000,
     interestRate: 3.5,
     loanTermYears: '20',
-    taxRegime: 'REEL_LMNP' as 'REEL_LMNP' | 'MICRO_BIC' | 'NU'
+    taxRegime: 'REEL_LMNP' as TaxRegime,
+    marginalTaxRate: 30,
+    vacancyRate: 4,
+    managementRate: 0,
+    insuranceAnnual: 180,
+    rentGrowthRate: 1.5,
+    propertyGrowthRate: 1.2,
   });
-
   protected readonly simulationForm = form(this.simulationModel);
 
-  // Recalcul automatique lorsque le deal sélectionné ou les inputs de simulation changent
-  protected readonly simulationResult = computed(() => {
-    const deal = this.selectedDeal();
-    if (!deal) return null;
-    
-    const simInput = this.simulationForm().value();
-    return this.dealService.calculateSimulation(deal, simInput);
+  protected readonly simulationResource = resource({
+    params: (): SimulationRequest | undefined => {
+      const deal = this.selectedDeal();
+      if (!deal) return undefined;
+      const values = this.simulationForm().value();
+      return { ...values, dealId: deal.id, loanTermYears: Number(values.loanTermYears) };
+    },
+    loader: ({ params }) => this.dealService.calculateSimulation(params),
   });
 
-  // --- MÉTRIQUES GLOBALES (Computed) ---
   protected readonly globalMetrics = computed(() => {
-    const deals = this.dealsResource.value() ?? [];
+    const deals = this.deals();
     if (deals.length === 0) {
-      return { count: 0, avgPrice: 0, avgYield: 0, bestScore: 0 };
+      return { avgPrice: 0, avgYield: 0, bestScore: 0, favorites: 0 };
     }
-    const totalPrice = deals.reduce((sum, d) => sum + d.price, 0);
-    const totalYield = deals.reduce((sum, d) => sum + ((d.monthlyRent * 12) / d.price * 100), 0);
-    const maxScore = deals.reduce((max, d) => Math.max(max, d.opportunityScore), 0);
-
     return {
-      count: deals.length,
-      avgPrice: Math.round(totalPrice / deals.length),
-      avgYield: parseFloat((totalYield / deals.length).toFixed(1)),
-      bestScore: maxScore
+      avgPrice: Math.round(deals.reduce((sum, deal) => sum + deal.price, 0) / deals.length),
+      avgYield: Number(
+        (deals.reduce((sum, deal) => sum + deal.grossYield, 0) / deals.length).toFixed(1),
+      ),
+      bestScore: Math.max(...deals.map((deal) => deal.opportunityScore)),
+      favorites: deals.filter((deal) => deal.favorite).length,
     };
   });
 
-  selectDeal(id: string) {
+  protected readonly chartProjection = computed(() => {
+    const projection = this.simulationResource.value()?.projection ?? [];
+    if (projection.length <= 8) return projection;
+    const step = Math.max(1, Math.floor(projection.length / 8));
+    return projection.filter((_, index) => index % step === 0).slice(0, 8);
+  });
+
+  protected selectDeal(id: string): void {
     this.selectedDealId.set(id);
-    
-    // Réinitialiser l'apport suggéré (ex: 15% du prix du bien) lors du changement de deal
-    const deal = this.dealsResource.value()?.find(d => d.id === id);
+    const deal = this.deals().find((candidate) => candidate.id === id);
     if (deal) {
-      const suggestedDownpayment = Math.round(deal.price * 0.15);
-      this.simulationModel.update(sim => ({
-        ...sim,
-        downpayment: suggestedDownpayment
+      this.simulationModel.update((simulation) => ({
+        ...simulation,
+        downpayment: Math.round(deal.price * 0.15),
       }));
     }
   }
 
-  // Helper pour mettre à jour l'apport par clic sur des boutons raccourcis
-  setDownpaymentPercent(percent: number) {
+  protected setDownpaymentPercent(percent: number): void {
     const deal = this.selectedDeal();
     if (deal) {
-      const amount = Math.round(deal.price * (percent / 100));
-      this.simulationModel.update(sim => ({
-        ...sim,
-        downpayment: amount
+      this.simulationModel.update((simulation) => ({
+        ...simulation,
+        downpayment: Math.round(deal.price * (percent / 100)),
       }));
     }
   }
 
-  // --- ACTIONS API & MODALE ---
-  openCreateModal() {
+  protected toggleFavoritesOnly(): void {
+    this.filterModel.update((filters) => ({ ...filters, favoritesOnly: !filters.favoritesOnly }));
+  }
+
+  protected resetFilters(): void {
+    this.filterModel.set({
+      priceMax: 400000,
+      yieldMin: 5,
+      cashflowMin: 0,
+      location: '',
+      favoritesOnly: false,
+    });
+  }
+
+  protected async toggleFavorite(event: Event, deal: Deal): Promise<void> {
+    event.stopPropagation();
+    this.favoritePendingId.set(deal.id);
+    try {
+      await this.dealService.setFavorite(deal.id, !deal.favorite);
+      this.dealsResource.reload();
+    } finally {
+      this.favoritePendingId.set(null);
+    }
+  }
+
+  protected openCreateModal(): void {
     this.submitError.set(null);
     this.submitFieldErrors.set({});
     this.isCreateModalOpen.set(true);
   }
 
-  closeCreateModal() {
-    this.isCreateModalOpen.set(false);
+  protected closeCreateModal(): void {
+    if (!this.isSubmitting()) this.isCreateModalOpen.set(false);
   }
 
-  async submitCreateDeal() {
+  protected closeModalFromBackdrop(event: MouseEvent): void {
+    if (event.target === event.currentTarget) this.closeCreateModal();
+  }
+
+  protected async submitCreateDeal(): Promise<void> {
+    const value = this.newDealForm().value();
+    const localErrors: Record<string, string> = {};
+    if (!value.title.trim()) localErrors['title'] = 'Ajoute un titre clair pour identifier le bien.';
+    if (!value.location.trim()) localErrors['location'] = 'La localisation est obligatoire.';
+    if (value.price <= 0) localErrors['price'] = 'Le prix doit être supérieur à zéro.';
+    if (Object.keys(localErrors).length > 0) {
+      this.submitFieldErrors.set(localErrors);
+      return;
+    }
+
     this.isSubmitting.set(true);
     this.submitError.set(null);
     this.submitFieldErrors.set({});
-
     try {
-      const created = await this.dealService.createDeal(this.newDealForm().value());
-      this.isCreateModalOpen.set(false);
-      // Recharger les données réactives de l'API
-      this.dealsResource.reload();
-      // Sélectionner automatiquement le nouveau deal
+      const created = await this.dealService.createDeal(value);
       this.selectedDealId.set(created.id);
-    } catch (err: any) {
-      // Exploitation directe du standard RFC 7807 (ProblemDetail) renvoyé par Spring Boot
-      if (err?.error) {
-        const problem: ProblemDetail = err.error;
-        this.submitError.set(problem.detail || problem.title || 'Erreur lors de la création');
-        if (problem.invalidParams) {
-          this.submitFieldErrors.set(problem.invalidParams);
-        }
-      } else {
-        this.submitError.set('Impossible de contacter le serveur backend.');
-      }
+      this.isCreateModalOpen.set(false);
+      this.newDealModel.update((model) => ({ ...model, title: '', location: '', description: '' }));
+      this.dealsResource.reload();
+    } catch (error: unknown) {
+      const problem = error instanceof HttpErrorResponse ? (error.error as ProblemDetail) : null;
+      this.submitError.set(problem?.detail ?? 'Impossible d’enregistrer ce bien pour le moment.');
+      this.submitFieldErrors.set(problem?.invalidParams ?? {});
     } finally {
       this.isSubmitting.set(false);
     }
+  }
+
+  protected formatCurrency(value: number | null | undefined): string {
+    return this.currencyFormatter.format(value ?? 0);
+  }
+
+  protected formatSignedCurrency(value: number | null | undefined): string {
+    const amount = value ?? 0;
+    return `${amount >= 0 ? '+' : '−'}${this.currencyFormatter.format(Math.abs(amount))}`;
+  }
+
+  protected cashFlowTone(value: number | null | undefined): string {
+    return (value ?? 0) >= 0 ? 'positive' : 'negative';
+  }
+
+  protected projectionHeight(netWorth: number): number {
+    const values = this.chartProjection().map((point) => point.netWorth);
+    const maximum = Math.max(...values, 1);
+    return Math.max(12, Math.round((netWorth / maximum) * 100));
+  }
+
+  protected propertyTypeLabel(type: Deal['propertyType']): string {
+    return { Studio: 'Studio', Apartment: 'Appartement', Building: 'Immeuble', House: 'Maison' }[type];
   }
 }

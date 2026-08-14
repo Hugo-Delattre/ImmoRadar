@@ -4,6 +4,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 @Component
 public class DatabaseSeeder implements CommandLineRunner {
@@ -21,80 +22,69 @@ public class DatabaseSeeder implements CommandLineRunner {
                 new Deal(
                     "1",
                     "Immeuble de Rapport - 4 Lots",
-                    245000,
-                    2150,
-                    180,
-                    1600,
-                    35000,
+                    amount("245000"), amount("2150"), amount("180"), amount("1600"), amount("35000"),
                     "Saint-Étienne (42)",
-                    140,
+                    amount("140"),
                     PropertyType.BUILDING,
                     "Immeuble de rapport composé de 2 studios et 2 T2 en parfait état. Tous les lots sont actuellement loués. Compteurs électriques individuels. Faible taxe foncière.",
                     9.2,
-                    "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80"
+                    "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80",
+                    true
                 ),
                 new Deal(
                     "2",
                     "Appartement T4 Spécial Colocation",
-                    135000,
-                    1200,
-                    110,
-                    950,
-                    15000,
+                    amount("135000"), amount("1200"), amount("110"), amount("950"), amount("15000"),
                     "Limoges (87)",
-                    78,
+                    amount("78"),
                     PropertyType.APARTMENT,
                     "Appartement T4 proche des facultés. Aménagé en 3 chambres pour colocation étudiante. Vendu entièrement meublé et équipé. Rendement optimal immédiat.",
                     8.8,
-                    "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80"
+                    "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80",
+                    false
                 ),
                 new Deal(
                     "3",
                     "Studio meublé hyper-centre",
-                    89000,
-                    620,
-                    65,
-                    520,
-                    5000,
+                    amount("89000"), amount("620"), amount("65"), amount("520"), amount("5000"),
                     "Mulhouse (68)",
-                    24,
+                    amount("24"),
                     PropertyType.STUDIO,
                     "Studio entièrement rénové par un architecte d'intérieur. Emplacement numéro 1, à 2 minutes à pied de la gare et des commerces. Idéal LMNP.",
                     8.4,
-                    "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80"
+                    "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80",
+                    true
                 ),
                 new Deal(
                     "4",
                     "Maison divisée en 2 appartements",
-                    195000,
-                    1480,
-                    120,
-                    1250,
-                    20000,
+                    amount("195000"), amount("1480"), amount("120"), amount("1250"), amount("20000"),
                     "Le Mans (72)",
-                    115,
+                    amount("115"),
                     PropertyType.HOUSE,
                     "Maison de ville divisée en un T3 avec jardin privatif et un T2 à l'étage. Entrées séparées. Fort potentiel de revente après découpe cadastrale officielle.",
                     7.9,
-                    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80"
+                    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
+                    false
                 ),
                 new Deal(
                     "5",
                     "Petit immeuble de centre-ville",
-                    310000,
-                    2600,
-                    220,
-                    2100,
-                    45000,
+                    amount("310000"), amount("2600"), amount("220"), amount("2100"), amount("45000"),
                     "Belfort (90)",
-                    180,
+                    amount("180"),
                     PropertyType.BUILDING,
                     "Immeuble de rapport comprenant 5 appartements. Toiture refaite en 2024. Travaux de rafraîchissement à prévoir sur 2 appartements pour optimiser les loyers.",
                     8.1,
-                    "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"
+                    "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80",
+                    false
                 )
             );
             dealRepository.saveAll(seedDeals);
         }
+    }
+
+    private static BigDecimal amount(String value) {
+        return new BigDecimal(value);
     }
 }

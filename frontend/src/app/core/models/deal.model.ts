@@ -1,17 +1,32 @@
+export type PropertyType = 'Studio' | 'Apartment' | 'Building' | 'House';
+export type TaxRegime = 'REEL_LMNP' | 'MICRO_BIC' | 'NU' | 'SCI_IS';
+
 export interface Deal {
   id: string;
   title: string;
   price: number;
   monthlyRent: number;
   monthlyCharges: number;
-  propertyTax: number; // Taxe foncière (annuelle)
-  renovationCost: number; // Travaux
+  propertyTax: number;
+  renovationCost: number;
   location: string;
-  surface: number; // m²
-  propertyType: 'Studio' | 'Apartment' | 'Building' | 'House';
+  surface: number;
+  propertyType: PropertyType;
   description: string;
-  opportunityScore: number; // 0-10 score
+  opportunityScore: number;
   imageUrl: string;
+  favorite: boolean;
+  grossYield: number;
+  monthlyOperatingIncome: number;
+  pricePerSquareMeter: number;
+}
+
+export interface DealSearchResponse {
+  content: Deal[];
+  totalElements: number;
+  page: number;
+  size: number;
+  totalPages: number;
 }
 
 export interface DealFilters {
@@ -19,22 +34,44 @@ export interface DealFilters {
   yieldMin: number;
   cashflowMin: number;
   location: string;
+  favoritesOnly: boolean;
 }
 
-export interface SimulationInput {
-  downpayment: number; // Apport
-  interestRate: number; // Taux d'intérêt (%)
-  loanTermYears: string | number; // Durée du prêt (années)
-  taxRegime: 'REEL_LMNP' | 'MICRO_BIC' | 'NU';
+export interface SimulationRequest {
+  dealId: string;
+  downpayment: number;
+  interestRate: number;
+  loanTermYears: number;
+  taxRegime: TaxRegime;
+  marginalTaxRate: number;
+  vacancyRate: number;
+  managementRate: number;
+  insuranceAnnual: number;
+  rentGrowthRate: number;
+  propertyGrowthRate: number;
+}
+
+export interface ProjectionPoint {
+  year: number;
+  annualCashFlow: number;
+  cumulativeCashFlow: number;
+  remainingLoan: number;
+  estimatedPropertyValue: number;
+  netWorth: number;
 }
 
 export interface SimulationResult {
-  price: number;
-  grossYield: number;
-  netYield: number;
+  totalProjectCost: number;
+  loanAmount: number;
   monthlyMortgage: number;
   monthlyCashFlow: number;
+  grossYield: number;
+  netYield: number;
   taxAnnual: number;
+  annualOperatingExpenses: number;
+  breakEvenRent: number;
+  cashFlowStatus: 'POSITIF' | 'EQUILIBRE' | 'A_OPTIMISER';
+  projection: ProjectionPoint[];
 }
 
 export interface CreateDealRequest {
@@ -46,12 +83,11 @@ export interface CreateDealRequest {
   renovationCost: number;
   location: string;
   surface: number;
-  propertyType: 'Studio' | 'Apartment' | 'Building' | 'House';
+  propertyType: PropertyType;
   description: string;
   imageUrl: string;
 }
 
-/** Structure standardisée RFC 7807 (Problem Details for HTTP APIs) */
 export interface ProblemDetail {
   type: string;
   title: string;

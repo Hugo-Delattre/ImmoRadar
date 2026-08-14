@@ -1,12 +1,26 @@
 package com.immoradar.backend.deal;
 
+import com.immoradar.backend.deal.dto.CreateDealRequest;
+import com.immoradar.backend.deal.dto.DealResponse;
+import com.immoradar.backend.deal.dto.DealSearchResponse;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.UUID;
 
 @Service
+@Transactional(readOnly = true)
 public class DealService {
+
+    private static final String DEFAULT_IMAGE =
+            "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=85";
+    private static final BigDecimal TWELVE = BigDecimal.valueOf(12);
+    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final DealRepository dealRepository;
 
@@ -14,71 +28,89 @@ public class DealService {
         this.dealRepository = dealRepository;
     }
 
-    public List<Deal> getDeals(
-            @Nullable Double priceMax,
-            @Nullable Double yieldMin,
-            @Nullable Double cashflowMin,
-            @Nullable String location) {
-        
-        List<Deal> allDeals = dealRepository.findAll();
-        
-        return allDeals.stream()
-                .filter(deal -> {
-                    if (priceMax != null && deal.getPrice() > priceMax) {
-                        return false;
-                    }
-                    if (location != null && !location.isBlank() && 
-                        !deal.getLocation().toLowerCase().contains(location.toLowerCase())) {
-                        return false;
-                    }
-                    if (yieldMin != null) {
-                        double grossYield = (deal.getMonthlyRent() * 12) / deal.getPrice() * 100;
-                        if (grossYield < yieldMin) {
-                            return false;
-                        }
-                    }
-                    if (cashflowMin != null) {
-                        double estimatedCashFlow = deal.getMonthlyRent() - deal.getMonthlyCharges() - (deal.getPropertyTax() / 12);
-                        if (estimatedCashFlow < cashflowMin) {
-                            return false;
-                        }
-                    }
-                    return true;
-                })
-                .toList();
+    public DealSearchResponse search(
+            @Nullable BigDecimal priceMax,
+            @Nullable BigDecimal yieldMin,
+            @Nullable BigDecimal cashflowMin,
+            @Nullable String location,
+            boolean favoritesOnly,
+            int page,
+            int size) {
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "opportunityScore"));
+        var deals = dealRepository.findAll(
+                DealSpecifications.matching(priceMax, yieldMin, cashflowMin, location, favoritesOnly),
+                pageable);
+
+        return new DealSearchResponse(
+                deals.getContent().stream().map(this::toResponse).toList(),
+                deals.getTotalElements(),
+                deals.getNumber(),
+                deals.getSize(),
+                deals.getTotalPages());
     }
 
-    public Deal createDeal(com.immoradar.backend.deal.dto.CreateDealRequest request) {
-        String id = java.util.UUID.randomUUID().toString();
-
-        // Calcul automatique de l'Opportunity Score (0 à 10)
-        double grossYield = (request.monthlyRent() * 12) / request.price() * 100;
-        double netMonthly = request.monthlyRent() - request.monthlyCharges() - (request.propertyTax() / 12);
-        
-        double scoreYield = Math.min(5.0, (grossYield / 10.0) * 5.0);
-        double scoreCashflow = Math.min(5.0, Math.max(0, (netMonthly / 400.0) * 5.0));
-        double opportunityScore = Math.round((scoreYield + scoreCashflow) * 10.0) / 10.0;
-
-        String image = (request.imageUrl() != null && !request.imageUrl().isBlank()) 
-                ? request.imageUrl() 
-                : "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80";
-
-        Deal deal = new Deal(
-                id,
-                request.title(),
+    @Transactional
+    public DealResponse create(CreateDealRequest request) {
+        var deal = new Deal(
+                UUID.randomUUID().toString(),
+                request.title().trim(),
                 request.price(),
                 request.monthlyRent(),
                 request.monthlyCharges(),
                 request.propertyTax(),
                 request.renovationCost(),
-                request.location(),
+                request.location().trim(),
                 request.surface(),
                 request.propertyType(),
-                request.description() != null ? request.description() : "",
-                opportunityScore,
-                image
-        );
+                request.description() == null ? "" : request.description().trim(),
+                calculateOpportunityScore(request),
+                request.imageUrl() == null || request.imageUrl().isBlank() ? DEFAULT_IMAGE : request.imageUrl().trim(),
+                false);
 
-        return dealRepository.save(deal);
+        return toResponse(dealRepository.save(deal));
+    }
+
+    @Transactional
+    public DealResponse setFavorite(String dealId, boolean favorite) {
+        var deal = getEntity(dealId);
+        deal.setFavorite(favorite);
+        return toResponse(dealRepository.save(deal));
+    }
+
+    public Deal getEntity(String dealId) {
+        return dealRepository.findById(dealId).orElseThrow(() -> new DealNotFoundException(dealId));
+    }
+
+    private double calculateOpportunityScore(CreateDealRequest request) {
+        var grossYield = percentage(request.monthlyRent().multiply(TWELVE), request.price());
+        var operatingIncome = monthlyOperatingIncome(
+                request.monthlyRent(), request.monthlyCharges(), request.propertyTax());
+        var yieldScore = Math.min(6.0, grossYield.doubleValue() * 0.6);
+        var cashflowScore = Math.min(4.0, Math.max(0, operatingIncome.doubleValue() / 100));
+        return BigDecimal.valueOf(yieldScore + cashflowScore)
+                .setScale(1, RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
+    private DealResponse toResponse(Deal deal) {
+        return new DealResponse(
+                deal.getId(), deal.getTitle(), deal.getPrice(), deal.getMonthlyRent(),
+                deal.getMonthlyCharges(), deal.getPropertyTax(), deal.getRenovationCost(),
+                deal.getLocation(), deal.getSurface(), deal.getPropertyType(), deal.getDescription(),
+                deal.getOpportunityScore(), deal.getImageUrl(), deal.isFavorite(),
+                percentage(deal.getMonthlyRent().multiply(TWELVE), deal.getPrice()),
+                monthlyOperatingIncome(deal.getMonthlyRent(), deal.getMonthlyCharges(), deal.getPropertyTax()),
+                deal.getPrice().divide(deal.getSurface(), 0, RoundingMode.HALF_UP));
+    }
+
+    private static BigDecimal percentage(BigDecimal numerator, BigDecimal denominator) {
+        return numerator.multiply(HUNDRED).divide(denominator, 2, RoundingMode.HALF_UP);
+    }
+
+    private static BigDecimal monthlyOperatingIncome(
+            BigDecimal rent, BigDecimal charges, BigDecimal annualPropertyTax) {
+        return rent.subtract(charges)
+                .subtract(annualPropertyTax.divide(TWELVE, 2, RoundingMode.HALF_UP))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 }

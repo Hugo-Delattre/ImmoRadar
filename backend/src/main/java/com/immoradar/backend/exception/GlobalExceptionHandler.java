@@ -1,5 +1,7 @@
 package com.immoradar.backend.exception;
 
+import com.immoradar.backend.deal.DealNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.validation.FieldError;
@@ -17,6 +19,7 @@ import java.util.Map;
  * Retourne des réponses au format application/problem+json typées et exploitables côté client.
  */
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -50,8 +53,18 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
+    @ExceptionHandler(DealNotFoundException.class)
+    public ProblemDetail handleDealNotFound(DealNotFoundException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problemDetail.setTitle("Bien introuvable");
+        problemDetail.setType(URI.create("https://immoradar.fr/errors/deal-not-found"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
+    }
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGeneralException(Exception ex) {
+        log.error("Unhandled API error", ex);
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Une erreur interne imprévue est survenue sur le serveur."

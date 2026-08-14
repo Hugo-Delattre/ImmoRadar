@@ -1,24 +1,24 @@
 package com.immoradar.backend.deal;
 
-import org.jspecify.annotations.Nullable;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.immoradar.backend.deal.dto.CreateDealRequest;
+import com.immoradar.backend.deal.dto.DealResponse;
+import com.immoradar.backend.deal.dto.DealSearchResponse;
+import com.immoradar.backend.deal.dto.FavoriteRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.math.BigDecimal;
 
+@Validated
 @RestController
 @RequestMapping("/api/deals")
-@CrossOrigin(origins = "*")
 public class DealController {
 
     private final DealService dealService;
@@ -28,17 +28,24 @@ public class DealController {
     }
 
     @GetMapping
-    public List<Deal> getDeals(
-            @RequestParam(required = false) @Nullable Double priceMax,
-            @RequestParam(required = false) @Nullable Double yieldMin,
-            @RequestParam(required = false) @Nullable Double cashflowMin,
-            @RequestParam(required = false) @Nullable String location) {
-        return dealService.getDeals(priceMax, yieldMin, cashflowMin, location);
+    public DealSearchResponse search(
+            @RequestParam(required = false) @PositiveOrZero @Nullable BigDecimal priceMax,
+            @RequestParam(required = false) @PositiveOrZero @Nullable BigDecimal yieldMin,
+            @RequestParam(required = false) @Nullable BigDecimal cashflowMin,
+            @RequestParam(required = false) @Nullable String location,
+            @RequestParam(defaultValue = "false") boolean favoritesOnly,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "24") @Min(1) @Max(100) int size) {
+        return dealService.search(priceMax, yieldMin, cashflowMin, location, favoritesOnly, page, size);
     }
 
     @PostMapping
-    public ResponseEntity<Deal> createDeal(@RequestBody @Valid CreateDealRequest request) {
-        Deal created = dealService.createDeal(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<DealResponse> create(@RequestBody @Valid CreateDealRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(dealService.create(request));
+    }
+
+    @PatchMapping("/{dealId}/favorite")
+    public DealResponse setFavorite(@PathVariable String dealId, @RequestBody FavoriteRequest request) {
+        return dealService.setFavorite(dealId, request.favorite());
     }
 }
