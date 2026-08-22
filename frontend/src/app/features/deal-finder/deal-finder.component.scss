@@ -195,6 +195,11 @@ details[open] summary span { transform: rotate(45deg); }
 .bar-column small { text-align: center; color: #5e716a; font-size: 7px; }
 .result-footer { display: flex; justify-content: space-between; margin-top: 17px; color: var(--muted); font-size: 9px; }
 .result-footer strong { color: var(--text); }
+.report-button { width: 100%; min-height: 43px; margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid rgba(199,255,102,.24); border-radius: 11px; background: rgba(199,255,102,.08); color: var(--lime); font-size: 10px; font-weight: 850; cursor: pointer; }
+.report-button:hover { background: rgba(199,255,102,.13); }
+.report-button:disabled { opacity: .55; cursor: wait; }
+.report-button svg { width: 16px; }
+.report-error { margin: 8px 0 0; color: #ff9e8b; font-size: 9px; text-align: center; }
 .result-loading { height: 100%; display: grid; place-content: center; justify-items: center; gap: 15px; color: var(--muted); font-size: 11px; }
 .result-loading i { width: 28px; height: 28px; border: 2px solid var(--line); border-top-color: var(--lime); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

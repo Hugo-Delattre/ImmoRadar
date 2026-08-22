@@ -31,6 +31,8 @@ export class DealFinderComponent {
   protected readonly submitFieldErrors = signal<Record<string, string>>({});
   protected readonly favoritePendingId = signal<string | null>(null);
   protected readonly selectedDealId = signal<string | null>(null);
+  protected readonly isDownloadingReport = signal(false);
+  protected readonly reportError = signal<string | null>(null);
 
   protected readonly newDealModel = signal<CreateDealRequest>({
     title: '',
@@ -84,13 +86,15 @@ export class DealFinderComponent {
   });
   protected readonly simulationForm = form(this.simulationModel);
 
-  protected readonly simulationResource = resource({
-    params: (): SimulationRequest | undefined => {
+  protected readonly simulationRequest = computed<SimulationRequest | null>(() => {
       const deal = this.selectedDeal();
-      if (!deal) return undefined;
+      if (!deal) return null;
       const values = this.simulationForm().value();
       return { ...values, dealId: deal.id, loanTermYears: Number(values.loanTermYears) };
-    },
+  });
+
+  protected readonly simulationResource = resource({
+    params: (): SimulationRequest | undefined => this.simulationRequest() ?? undefined,
     loader: ({ params }) => this.dealService.calculateSimulation(params),
   });
 
@@ -202,6 +206,26 @@ export class DealFinderComponent {
       this.submitFieldErrors.set(problem?.invalidParams ?? {});
     } finally {
       this.isSubmitting.set(false);
+    }
+  }
+
+  protected async downloadInvestmentReport(): Promise<void> {
+    const request = this.simulationRequest();
+    if (!request) return;
+    this.isDownloadingReport.set(true);
+    this.reportError.set(null);
+    try {
+      const report = await this.dealService.generateInvestmentReport(request);
+      const url = URL.createObjectURL(report);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'dossier-investissement-immoradar.pdf';
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      this.reportError.set('Le dossier n’a pas pu être généré. Réessaie dans un instant.');
+    } finally {
+      this.isDownloadingReport.set(false);
     }
   }
 

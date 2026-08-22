@@ -42,4 +42,10 @@ export class DealService {
   calculateSimulation(request: SimulationRequest): Promise<SimulationResult> {
     return firstValueFrom(this.http.post<SimulationResult>('/api/simulations', request));
   }
+
+  generateInvestmentReport(request: SimulationRequest): Promise<Blob> {
+    return firstValueFrom(
+      this.http.post('/api/reports/investment', request, { responseType: 'blob' }),
+    );
+  }
 }
