@@ -19,6 +19,7 @@ ImmoRadar est une application full-stack qui transforme une annonce immobilière
 - scénarios `LMNP réel`, `Micro-BIC`, `location nue` et `SCI à l'IS` ;
 - hypothèses de vacance, gestion, assurance, progression des loyers et valeur du bien ;
 - projection annuelle sur 20 ou 25 ans ;
+- exploration des projections par année, trois indicateurs et tableau accessible ;
 - génération à la demande d'un dossier d'investissement PDF de deux pages ;
 - démonstration locale immédiatement exploitable grâce aux données d'exemple et à SQLite.
 
@@ -88,7 +89,9 @@ npm test -- --watch=false
 npx playwright test --project=chromium
 ```
 
-La CI GitHub vérifie le build Angular, les tests Vitest et les tests Spring. Le parcours principal est également couvert par Playwright en local.
+La CI GitHub vérifie le build Angular, les tests Vitest et les tests Spring. Playwright couvre les interactions de recherche, pagination, simulation et téléchargement avec une API contrôlée. Les tests navigateur connectés au véritable backend restent à automatiser.
+
+Pour apprendre en lisant le code : [parcours Angular et décisions d'architecture](docs/ANGULAR_ARCHITECTURE.md). La [roadmap](docs/PRD.md) distingue les fonctionnalités livrées, partielles et restantes.
 
 ## Suite produit
 

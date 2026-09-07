@@ -1,0 +1,42 @@
+<section aria-label="Projection financière interactive">
+  <header><span class="eyebrow">Votre horizon patrimonial</span><h3>Chaque année compte.</h3></header>
+  <div class="metric-selector" role="group" aria-label="Indicateur de projection">
+    @for (item of metrics; track item.key) {
+      <button type="button" [attr.aria-pressed]="metric() === item.key" (click)="metric.set(item.key)">{{ item.label }}</button>
+    }
+  </div>
+  @if (selectedPoint(); as point) {
+    <div class="summary" aria-live="polite">
+      <span>{{ metricLabel() }} · année {{ point.year }}</span>
+      <strong [class.negative]="point[metric()] < 0">{{ point[metric()] | currency:'EUR':'symbol':'1.0-0':'fr' }}</strong>
+    </div>
+    <div class="scale"><span>{{ geometry().maximum | currency:'EUR':'symbol':'1.0-0':'fr' }}</span><span>Projection estimative</span></div>
+    <svg viewBox="0 0 600 180" aria-hidden="true" focusable="false">
+      <line x1="20" x2="580" [attr.y1]="geometry().zeroY" [attr.y2]="geometry().zeroY" class="zero" />
+      <polyline [attr.points]="geometry().line" class="curve" />
+      @if (marker(); as selected) {
+        <line [attr.x1]="selected.x" [attr.x2]="selected.x" y1="15" y2="165" class="guide" />
+        <circle [attr.cx]="selected.x" [attr.cy]="selected.y" r="5" />
+      }
+    </svg>
+    <label class="year-control">Explorer une année
+      <input type="range" min="0" [max]="projection().length - 1" [value]="selectedIndex()" (input)="selectYear($event)" [attr.aria-valuetext]="'Année ' + point.year" />
+    </label>
+    <div class="years"><span>Année {{ projection()[0].year }}</span><span>Année {{ projection().at(-1)?.year }}</span></div>
+    <p class="definition">Patrimoine net = valeur estimée du bien − capital restant dû + trésorerie cumulée. Il ne représente pas un bénéfice de revente.</p>
+    <details>
+      <summary>Voir toutes les valeurs annuelles</summary>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Tableau des projections annuelles">
+        <table>
+          <caption>Projection annuelle selon les hypothèses du simulateur</caption>
+          <thead><tr><th scope="col">Année</th><th scope="col">Patrimoine net</th><th scope="col">Trésorerie cumulée</th><th scope="col">Capital restant</th></tr></thead>
+          <tbody>
+            @for (row of projection(); track row.year) {
+              <tr><th scope="row">{{ row.year }}</th><td>{{ row.netWorth | currency:'EUR':'symbol':'1.0-0':'fr' }}</td><td>{{ row.cumulativeCashFlow | currency:'EUR':'symbol':'1.0-0':'fr' }}</td><td>{{ row.remainingLoan | currency:'EUR':'symbol':'1.0-0':'fr' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </details>
+  } @else { <p>Aucune projection disponible pour ce scénario.</p> }
+</section>

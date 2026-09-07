@@ -97,3 +97,19 @@ export interface ProblemDetail {
   timestamp?: string;
   invalidParams?: Record<string, string>;
 }
+
+export interface DvfMarketAnalysis {
+  location: string;
+  dealPricePerSquareMeter: number;
+  dvfMedianPricePerSquareMeter: number;
+  dvfLowPricePerSquareMeter: number;
+  dvfHighPricePerSquareMeter: number;
+  deltaPercentage: number;
+  marketStatus: 'SOUS_EVALUE' | 'ALIGNE' | 'SUREVALUE';
+  suggestedOfferPrice: number;
+  negotiationMargin: number;
+  transactionsCount5Years: number;
+  liquidityScore: string;
+  averageSaleDelayDays: number;
+  advice: string;
+}

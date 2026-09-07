@@ -26,9 +26,9 @@
         <p>Centralisez vos opportunités, comparez leur potentiel et testez chaque financement en quelques secondes.</p>
       </div>
       <div class="hero-proof" aria-label="Qualité de l’analyse">
-        <span>Score de confiance</span>
-        <strong>92<small>/100</small></strong>
-        <div><i></i></div>
+        <span>Du bien à la décision</span>
+        <strong>3<small> étapes</small></strong>
+        <p>Explorer · Simuler · Exporter</p>
         <small>Hypothèses détaillées et ajustables</small>
       </div>
     </section>
@@ -95,6 +95,7 @@
           @if (dealsResource.isLoading()) { <span class="loading-label"><i></i> Actualisation</span> }
           @else { <span>Triés par potentiel</span> }
         </div>
+        @if (favoriteError()) { <p class="form-error" role="alert">{{ favoriteError() }}</p> }
 
         @if (dealsResource.isLoading() && deals().length === 0) {
           <div class="skeleton-list" aria-label="Chargement des biens">
@@ -129,7 +130,7 @@
                 <button
                   class="favorite-button"
                   [class.active]="deal.favorite"
-                  [disabled]="favoritePendingId() === deal.id"
+                  [disabled]="favoritePendingId() !== null"
                   type="button"
                   (click)="toggleFavorite($event, deal)"
                   [attr.aria-label]="deal.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'">♥</button>
@@ -142,6 +143,13 @@
               </div>
             }
           </div>
+        }
+        @if (totalPages() > 1) {
+          <nav class="pagination" aria-label="Pagination des biens">
+            <button type="button" (click)="changePage(-1)" [disabled]="page() === 0 || dealsResource.isLoading()">Précédent</button>
+            <span aria-live="polite">Page {{ page() + 1 }} sur {{ totalPages() }}</span>
+            <button type="button" (click)="changePage(1)" [disabled]="page() + 1 >= totalPages() || dealsResource.isLoading()">Suivant</button>
+          </nav>
         }
       </aside>
 
@@ -164,6 +172,59 @@
             <article><small>Charges + foncier</small><strong>{{ formatCurrency(deal.monthlyCharges + deal.propertyTax / 12) }}</strong><span>Par mois</span></article>
             <article class="accent"><small>Rendement brut</small><strong>{{ deal.grossYield }}%</strong><span>Avant financement</span></article>
           </div>
+
+          @if (marketAnalysis(); as market) {
+            <section class="dvf-card" aria-label="Analyse de marché DVF">
+              <div class="dvf-header">
+                <div>
+                  <div class="dvf-eyebrow">
+                    <span class="dvf-tag">data.gouv.fr</span>
+                    <span>Transactions réelles notariées (5 ans)</span>
+                  </div>
+                  <h3>Intelligence de marché · {{ market.location }}</h3>
+                </div>
+                <div class="dvf-status-badge" [class]="marketStatusBadge(market.marketStatus).cssClass">
+                  {{ marketStatusBadge(market.marketStatus).text }}
+                </div>
+              </div>
+
+              <div class="dvf-grid">
+                <article class="dvf-metric">
+                  <small>Prix DVF médian</small>
+                  <strong>{{ formatCurrency(market.dvfMedianPricePerSquareMeter) }}<span class="unit">/m²</span></strong>
+                  <span class="range">Fourchette : {{ formatCurrency(market.dvfLowPricePerSquareMeter) }} – {{ formatCurrency(market.dvfHighPricePerSquareMeter) }}</span>
+                </article>
+
+                <article class="dvf-metric">
+                  <small>Écart vs marché</small>
+                  <strong [class.negative]="market.deltaPercentage > 0" [class.positive]="market.deltaPercentage < 0">
+                    {{ market.deltaPercentage > 0 ? '+' : '' }}{{ market.deltaPercentage }}%
+                  </strong>
+                  <span class="range">Bien à {{ formatCurrency(market.dealPricePerSquareMeter) }}/m²</span>
+                </article>
+
+                <article class="dvf-metric">
+                  <small>Offre conseillée</small>
+                  <strong class="highlight">{{ formatCurrency(market.suggestedOfferPrice) }}</strong>
+                  <span class="range">Marge : {{ formatCurrency(market.negotiationMargin) }}</span>
+                </article>
+
+                <article class="dvf-metric">
+                  <small>Tension & Liquidité</small>
+                  <strong>Score {{ market.liquidityScore }}</strong>
+                  <span class="range">{{ market.averageSaleDelayDays }}j délai · {{ market.transactionsCount5Years }} ventes</span>
+                </article>
+              </div>
+
+              <div class="dvf-advice">
+                <div class="advice-icon">💡</div>
+                <div class="advice-content">
+                  <strong>Recommandation stratégique :</strong>
+                  <p>{{ market.advice }}</p>
+                </div>
+              </div>
+            </section>
+          }
 
           <div class="simulator-heading">
             <div><span class="section-index">02</span><h2>Studio de financement</h2></div>
@@ -214,12 +275,7 @@
                   <div><small>Loyer d’équilibre</small><strong>{{ formatCurrency(result.breakEvenRent) }}</strong></div>
                 </div>
 
-                <div class="projection-header"><div><strong>Patrimoine net projeté</strong><small>Capital remboursé + valorisation + trésorerie</small></div><span>{{ formatCurrency(result.projection.at(-1)?.netWorth) }}</span></div>
-                <div class="projection-chart" aria-label="Projection du patrimoine net">
-                  @for (point of chartProjection(); track point.year) {
-                    <div class="bar-column"><span [style.height.%]="projectionHeight(point.netWorth)"></span><small>A{{ point.year }}</small></div>
-                  }
-                </div>
+                <app-projection-chart [projection]="result.projection" />
                 <div class="result-footer"><span>Coût total du projet</span><strong>{{ formatCurrency(result.totalProjectCost) }}</strong></div>
                 <button class="report-button" type="button" (click)="downloadInvestmentReport()" [disabled]="isDownloadingReport()">
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>

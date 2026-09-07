@@ -14,19 +14,20 @@ import {
 export class DealService {
   private readonly http = inject(HttpClient);
 
-  getDeals(filters: DealFilters): Promise<DealSearchResponse> {
+  getDeals(filters: DealFilters, page = 0) {
     let params = new HttpParams()
       .set('priceMax', filters.priceMax)
       .set('yieldMin', filters.yieldMin)
       .set('cashflowMin', filters.cashflowMin)
       .set('favoritesOnly', filters.favoritesOnly)
-      .set('size', 24);
+      .set('page', page)
+      .set('size', 6);
 
     if (filters.location.trim()) {
       params = params.set('location', filters.location.trim());
     }
 
-    return firstValueFrom(this.http.get<DealSearchResponse>('/api/deals', { params }));
+    return this.http.get<DealSearchResponse>('/api/deals', { params });
   }
 
   createDeal(request: CreateDealRequest): Promise<Deal> {
@@ -39,13 +40,19 @@ export class DealService {
     );
   }
 
-  calculateSimulation(request: SimulationRequest): Promise<SimulationResult> {
-    return firstValueFrom(this.http.post<SimulationResult>('/api/simulations', request));
+  calculateSimulation(request: SimulationRequest) {
+    return this.http.post<SimulationResult>('/api/simulations', request);
   }
 
   generateInvestmentReport(request: SimulationRequest): Promise<Blob> {
     return firstValueFrom(
       this.http.post('/api/reports/investment', request, { responseType: 'blob' }),
+    );
+  }
+
+  getDealMarketAnalysis(dealId: string) {
+    return this.http.get<import('../models/deal.model').DvfMarketAnalysis>(
+      `/api/market/deals/${encodeURIComponent(dealId)}/dvf`
     );
   }
 }

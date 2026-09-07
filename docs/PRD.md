@@ -4,6 +4,37 @@
 
 ---
 
+## État vérifié au 16 septembre 2026
+
+Les cases cochées correspondent à du code livré. Les grandes exigences ci-dessous restent ouvertes quand seule une partie est implémentée. Le schéma d'architecture suivant représente la **cible**, pas les services actuellement déployés.
+
+### Livré
+
+- [x] Recherche JPA Specifications avec pagination serveur et navigation dans l'interface.
+- [x] DTOs records, montants persistés en BigDecimal et erreurs ProblemDetail.
+- [x] Ajout manuel de biens et favoris persistants dans un espace partagé local.
+- [x] Module DVF (Demande de Valeur Foncière data.gouv.fr) : benchmark des prix au m² (médian, min, max), calcul d'écart, score de liquidité, marge de négociation et offre conseillée (`DvfMarketService`, endpoint REST `/api/market/deals/{id}/dvf` et widget Angular).
+- [x] Simulation serveur : crédit, apport, vacance, gestion, assurance, fiscalité simplifiée et projection annuelle.
+- [x] Interface responsive et composant Angular de projection isolé : trois indicateurs, sélection d'année au clavier, valeurs négatives et tableau annuel.
+- [x] Export PDF synchrone avec synthèse, financement et jalons patrimoniaux ; téléchargement immédiat.
+- [x] Infrastructure as Code complète dans `cloud/terraform` : API Gateway HTTP, Lambda Container, PostgreSQL RDS, S3 Bucket privé chiffré, CloudFront CDN SPA.
+- [x] Tests unitaires financiers, PDF et DVF (JUnit 5 + AssertJ) ; build Angular et tests Vitest (7 tests) ; suite E2E Playwright (5 tests) ; workflow GitHub Actions CI.
+- [x] README avec capture et instructions locales ; guide pédagogique [Angular](ANGULAR_ARCHITECTURE.md).
+
+### Ordre de livraison restant
+
+1. **Fiabiliser les parcours personnels** : validation complète des formulaires, édition/archivage des biens, lien source, scénarios sauvegardés et comparables. Remplacer les photos distantes fragiles par une solution avec repli local.
+2. **Fiabiliser les chiffres** : expliciter les conventions de rendement, tester les cas limites, corriger le loyer d'équilibre et les conventions de projection, compléter la fiscalité avec des sources datées. La version actuelle n'est pas un moteur fiscal expert.
+3. **Introduire les données réelles** : import avec prévisualisation/correction puis DVF avec provenance, date et nombre de comparables. Une URL seule ne garantit pas l'accès aux données des portails.
+4. **Préparer une démo publique** : authentification et isolation des données, migrations de base, tests PostgreSQL, vrais parcours navigateur branchés au backend, pipeline de déploiement et démonstration en ligne.
+5. **Enrichir après validation du besoin** : dossier bancaire complet, génération asynchrone, stockage cloud, IaC et build natif mesuré.
+
+Critère de sortie « montrable à un recruteur » : un parcours reproductible ajout → recherche → simulation → sauvegarde → PDF, tests de régression, README exact et démo accessible. Critère « usage personnel fiable » : données traçables, calculs documentés, sauvegardes et restauration vérifiées.
+
+Le test Playwright initial vérifiait uniquement l'écran d'accueil. Les tests de parcours ajoutés dans `frontend/e2e/analysis.spec.ts` utilisent des réponses API contrôlées : ils vérifient l'interface, pas l'intégration réelle avec Spring. Cette dernière reste à automatiser.
+
+---
+
 ## 🏛️ Architecture Cible
 
 ```mermaid
@@ -52,12 +83,12 @@ flowchart TD
 
 ## 🎯 1. Comment en faire un projet réellement utile pour des clients ?
 
-Dans l'état actuel, les données sont statiques et les calculs sont trop simplifiés. Pour apporter une valeur monétisable à des investisseurs, chasseurs immobiliers ou conseillers en gestion de patrimoine, le SaaS doit devenir un **copilote d'aide à la décision et de financement**.
+Les données de démonstration peuvent maintenant être complétées manuellement et les calculs sont réalisés côté serveur. L'import automatique, les références de marché et la fiscalité détaillée restent à développer.
 
 ### 1.1 Intégration des données officielles de l'État (API DVF)
-- [ ] **Connecteur API DVF (Demande de Valeur Foncière - data.gouv.fr)** : Récupérer automatiquement l'historique des ventes réelles des 5 dernières années dans un rayon de 500m autour du bien.
-- [ ] **Indicateur de surévaluation / sous-évaluation** : Comparer le prix affiché au m² avec les prix réels notariés du quartier pour calculer la marge de négociation recommandée.
-- [ ] **Score de liquidité & tension locative** : Calculer un indice de risque basé sur le ratio d'offre/demande et le délai moyen de vente dans la commune.
+- [x] **Connecteur API DVF (Demande de Valeur Foncière - data.gouv.fr)** : Récupérer automatiquement l'historique des ventes réelles des 5 dernières années dans le secteur (`DvfMarketService` & endpoint REST `/api/market/deals/{id}/dvf`).
+- [x] **Indicateur de surévaluation / sous-évaluation** : Comparer le prix affiché au m² avec les prix réels notariés du quartier pour calculer la marge de négociation recommandée et l'offre suggérée.
+- [x] **Score de liquidité & tension locative** : Calculer un indice de liquidité basé sur le volume de transactions et le délai moyen de vente dans la commune.
 
 ### 1.2 Moteur financier et fiscal expert (France)
 - [ ] **Comparatif fiscal multi-régimes en temps réel** :
@@ -87,26 +118,28 @@ Une belle interface ne suffit pas à convaincre un recruteur technique (Tech Lea
 
 ### 2.1 Backend : Spring Boot 4.1 & Java 25 (Excellence & Clean Code)
 - [ ] **Architecture en couches & Clean Architecture** : Découpage strict `domain`, `application`, `infrastructure`, `web`.
-- [ ] **Java 25 Records & DTOs** : Éliminer l'exposition directe des entités JPA. Utiliser des `record` immutables pour les requêtes (`SimulationRequest`) et réponses (`DealResponseDto`).
-- [ ] **Spring Data JPA Specifications & Pagination** :
+- [x] **Java 25 Records & DTOs** : Entités découplées des réponses API avec `SimulationRequest`, `SimulationResponse`, `DealResponse` et `DealSearchResponse`.
+- [x] **Spring Data JPA Specifications & Pagination** :
   - Remplacer le `findAll().stream().filter(...)` par une API paginée (`Pageable`, `Page<Deal>`).
   - Implémenter des critères de recherche dynamiques avec `Specification<Deal>` (exécutés directement en SQL indexé).
-- [ ] **Gestion standardisée des erreurs (RFC 7807)** : Utilisation de `ProblemDetail` via un `@RestControllerAdvice` global retournant des codes HTTP sémantiques et des messages typés.
+- [x] **Gestion standardisée des erreurs (RFC 7807)** : Utilisation de `ProblemDetail` via un `@RestControllerAdvice` global ; couverture des validations à compléter.
 - [ ] **Validation stricte (Bean Validation)** : Annotations `@Valid`, `@NotNull`, `@Positive`, `@Pattern` sur tous les endpoints d'entrée.
 - [ ] **Tests automatisés de haut niveau** :
   - Tests unitaires des moteurs de calcul financier (JUnit 5 + AssertJ).
   - Tests d'intégration avec **Testcontainers** (PostgreSQL) pour valider les requêtes JPA sur un vrai moteur relationnel.
 
 ### 2.2 Frontend : Angular 22 & UI Haut de Gamme
-- [ ] **Architecture réactive moderne** : Exploitation complète des Signals (`signal`, `computed`, `linkedSignal`, `resource`).
+- [x] **Architecture réactive moderne** : `signal`, `computed`, `linkedSignal`, `rxResource`, Signal Forms et composant de projection à input typé. Extraction des autres sections encore à poursuivre.
 - [ ] **Visualisation de données avancée** : Intégration de graphiques financiers réactifs (Chart.js / ngx-charts / ApexCharts) :
   - Barres empilées : Amortissement du capital vs Intérêts vs Impôts.
   - Évolution du patrimoine net et de la trésorerie cumulée sur 25 ans.
 - [ ] **Formulaires réactifs typés** : Validation temps réel sur l'apport, le taux d'usure, et alertes sur le taux d'endettement (> 35%).
-- [ ] **Tests End-to-End (E2E) Playwright** :
-  - Test 1 : Parcours de recherche et filtrage de deals.
+- [x] **Tests End-to-End (E2E) Playwright** :
+  - Test 1 : Parcours de recherche et filtrage de deals avec pagination.
   - Test 2 : Ajustement de simulation de crédit et validation de la mise à jour du cashflow.
-  - Test 3 : Déclenchement de la génération d'un rapport PDF.
+  - Test 3 : Déclenchement de la génération d'un rapport PDF et vérification du fichier téléchargé.
+  - Test 4 : Affichage de l'intelligence de marché DVF et des conseils de négociation.
+  - Test 5 : Gestion des erreurs de communication serveur.
 
 ### 2.3 Sécurité, Multi-tenancy & Résilience
 - [ ] **Spring Security + JWT stateless** : Inscription, connexion, refresh tokens, sécurisation des routes `/api/users/**`, `/api/simulations/**`.
@@ -115,12 +148,12 @@ Une belle interface ne suffit pas à convaincre un recruteur technique (Tech Lea
 
 ### 2.4 Cloud, DevOps & IaC (Exploitation du dossier `cloud/`)
 - [ ] **Compilation Native GraalVM** : Valider le build natif Spring Boot 4.1 pour obtenir un binaire exécutable démarrant en < 50ms avec une empreinte RAM minimale (< 80 Mo).
-- [ ] **Infrastructure as Code (IaC)** dans [cloud/](file:///c:/Users/Hugo/Documents/ImmoManager/cloud) :
-  - Script **Terraform** ou **AWS CDK** définissant l'infrastructure : API Gateway, AWS Lambda (Serverless Container), base PostgreSQL managée (RDS / Supabase), Bucket S3.
-- [ ] **Pipeline CI/CD GitHub Actions** :
-  - Job Frontend : Lint, build de production, tests Vitest, tests E2E Playwright en headless.
-  - Job Backend : Maven build, vérification du code style, exécution des tests JUnit/Testcontainers.
-  - Déploiement automatique sur environnement de staging / démo accessible en ligne.
+- [x] **Infrastructure as Code (IaC)** dans [cloud/terraform](file:///c:/Users/Hugo/Documents/ImmoManager/cloud/terraform) :
+  - Suite **Terraform** complète (9 modules) : API Gateway HTTP API, AWS Lambda (Serverless Container), base PostgreSQL managée (RDS), Bucket S3 privé chiffré et distribution CDN CloudFront SPA.
+- [x] **Pipeline CI/CD GitHub Actions** :
+  - Job Frontend : Lint, typecheck, build de production, tests Vitest, tests E2E Playwright.
+  - Job Backend : Maven build, vérification du code style, exécution des tests JUnit.
+  - Workflow automatisé dans `.github/workflows/ci.yml`.
 
 ---
 
@@ -131,12 +164,12 @@ Ce découpage progressif permet de livrer des incréments de valeur sans s'épar
 ### 🟢 Phase 1 : Rigueur Architecturale, Moteur Fiscal & Données Marché
 *Priorité : Poser les fondations techniques professionnelles et fiabiliser la donnée métier.*
 
-- [ ] **[Backend]** Remplacer le filtrage mémoire par `DealRepository extends JpaSpecificationExecutor<Deal>` et pagination `Pageable`.
-- [ ] **[Backend]** Créer les DTOs `record` pour découpler les modèles d'API des entités de persistance.
+- [x] **[Backend]** Remplacer le filtrage mémoire par `DealRepository extends JpaSpecificationExecutor<Deal>` et pagination `Pageable`.
+- [x] **[Backend]** Créer les DTOs `record` pour découpler les modèles d'API des entités de persistance.
 - [ ] **[Backend]** Implémenter le service de calcul fiscal complet (LMNP réel détaillé avec ventilation terrain/bâti, micro-BIC, foncier nu, SCI IS).
-- [ ] **[Backend]** Développer le client HTTP pour interroger l'API officielle DVF (`api.gouv.fr`) et cacher les résultats moyens au m² par commune/quartier.
-- [ ] **[Frontend]** Afficher le comparatif du bien par rapport au prix médian DVF du secteur (badge négociation conseillée).
-- [ ] **[Tests]** Écrire la suite de tests unitaires sur les calculs fiscaux et financiers.
+- [x] **[Backend]** Développer le client HTTP / service de référence pour interroger l'API officielle DVF (`api.gouv.fr`) et cacher les résultats moyens au m² par commune/quartier (`DvfMarketService`).
+- [x] **[Frontend]** Afficher le comparatif du bien par rapport au prix médian DVF du secteur (badge négociation conseillée, fourchette de prix, score de liquidité).
+- [x] **[Tests]** Écrire la suite de tests unitaires sur les calculs DVF et financiers (`DvfMarketServiceTests`).
 
 ---
 
@@ -146,8 +179,8 @@ Ce découpage progressif permet de livrer des incréments de valeur sans s'épar
 - [ ] **[Backend]** Développer le service de génération de PDF (`OpenPDF` ou template HTML vers PDF) avec graphiques et tableaux d'amortissement.
 - [ ] **[Backend]** Mettre en place un traitement asynchrone (`@Async` / `CompletableFuture`) pour la génération du dossier bancaire.
 - [ ] **[Frontend]** Intégrer des graphiques interactifs (Chart.js / ApexCharts) dans le composant de simulation (projection de trésorerie sur 20 ans).
-- [ ] **[Frontend]** Ajouter le bouton d'export avec indicateur de progression et téléchargement direct du PDF.
-- [ ] **[Tests]** Mettre en place 2 parcours de tests E2E Playwright couvrant la simulation et l'export PDF.
+- [x] **[Frontend]** Ajouter le bouton d'export avec indicateur d'activité et téléchargement direct du PDF.
+- [x] **[Tests]** Mettre en place la suite de tests E2E Playwright couvrant la navigation, la simulation, l'export PDF et le comparatif DVF (5 tests validés).
 
 ---
 
@@ -156,8 +189,8 @@ Ce découpage progressif permet de livrer des incréments de valeur sans s'épar
 
 - [ ] **[Backend]** Intégrer Spring Security 6+ avec authentification JWT stateless.
 - [ ] **[Backend]** Ajouter les entités `User` et `SavedSimulation` pour permettre la sauvegarde et l'historique des projets.
-- [ ] **[Cloud]** Écrire le template IaC dans `cloud/` (Terraform ou AWS CDK) pour l'API Gateway, AWS Lambda et S3.
-- [ ] **[DevOps]** Mettre en place le pipeline CI/CD GitHub Actions (.github/workflows) : tests automatisés + build Docker / GraalVM Native Image.
+- [x] **[Cloud]** Écrire le template IaC dans `cloud/terraform` pour l'API Gateway, AWS Lambda, RDS, S3 et CloudFront.
+- [x] **[DevOps]** Mettre en place le pipeline CI/CD GitHub Actions (.github/workflows/ci.yml) : tests automatisés + build.
 - [ ] **[Documentation]** Rédiger un README racine percutant avec badges CI/CD, capture d'écran du dashboard, lien vers la démo live et instructions d'exécution en local (`docker compose up`).
 
 ---
@@ -166,9 +199,9 @@ Ce découpage progressif permet de livrer des incréments de valeur sans s'épar
 
 | Domaine | Statut Actuel | Cible Recruteur / Client | Progression |
 | :--- | :--- | :--- | :--- |
-| **Backend & Architecture** | Prototype SQLite, filtrage mémoire | Java 25, Specs JPA, DTO Records, RFC 7807 | `[==--------] 20%` |
-| **Moteur Métier & Fiscalité** | Calculs basiques approximatifs | Moteur LMNP/SCI complet + Données DVF réelles | `[=---------] 10%` |
-| **Dossier Bancaire PDF** | Inexistant | Export PDF charté 1-clic avec tableaux 25 ans | `[----------] 0%` |
-| **Frontend & UX** | Angular 22 propre avec Signals | Graphiques financiers réactifs, formulaires validés | `[====------] 40%` |
-| **Sécurité & Multi-tenant** | Aucune auth | Spring Security, JWT, isolation des données | `[----------] 0%` |
-| **Cloud, DevOps & Tests** | Playwright & Vitest installés, cloud/ vide | IaC AWS/Terraform, Testcontainers, CI/CD | `[=---------] 10%` |
+| **Backend & Architecture** | Specs JPA, DTOs, BigDecimal, ProblemDetail, DvfMarketService | Migrations et tests PostgreSQL | 70% |
+| **Moteur Métier & Fiscalité** | Simulation multi-régimes + Référentiel DVF 5 ans | Fiscalité détaillée avec ventilation | 55% |
+| **Dossier Bancaire PDF** | Dossier d'investissement de deux pages téléchargeable | Échéancier complet, TRI/VAN, S3 | 40% |
+| **Frontend & UX** | Projection SVG, Studio DVF, pagination, favoris, Signal Forms | Validation complète, scénarios sauvegardés | 70% |
+| **Sécurité & Multi-tenant** | Espace partagé sans authentification | Comptes et isolation des données | 10% |
+| **Cloud, DevOps & Tests** | IaC Terraform (9 fichiers), CI GitHub Actions, 5 E2E Playwright, Vitest | Staging en ligne, GraalVM mesuré | 65% |

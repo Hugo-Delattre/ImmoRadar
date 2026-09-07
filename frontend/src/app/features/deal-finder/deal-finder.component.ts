@@ -1,19 +1,24 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { FormField, form } from '@angular/forms/signals';
+import { of } from 'rxjs';
 import {
   CreateDealRequest,
   Deal,
+  DvfMarketAnalysis,
   ProblemDetail,
   SimulationRequest,
   TaxRegime,
 } from '../../core/models/deal.model';
 import { DealService } from '../../core/services/deal.service';
+import { ProjectionChartComponent } from './components/projection-chart/projection-chart.component';
 
 @Component({
   selector: 'app-deal-finder',
   standalone: true,
-  imports: [FormField],
+  imports: [FormField, ProjectionChartComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './deal-finder.component.html',
   styleUrl: './deal-finder.component.scss',
 })
@@ -30,6 +35,7 @@ export class DealFinderComponent {
   protected readonly submitError = signal<string | null>(null);
   protected readonly submitFieldErrors = signal<Record<string, string>>({});
   protected readonly favoritePendingId = signal<string | null>(null);
+  protected readonly favoriteError = signal<string | null>(null);
   protected readonly selectedDealId = signal<string | null>(null);
   protected readonly isDownloadingReport = signal(false);
   protected readonly reportError = signal<string | null>(null);
@@ -58,13 +64,17 @@ export class DealFinderComponent {
   });
   protected readonly filterForm = form(this.filterModel);
 
-  protected readonly dealsResource = resource({
-    params: () => this.filterForm().value(),
-    loader: ({ params }) => this.dealService.getDeals(params),
+  // A new search starts on page one; explicit navigation can still change it.
+  protected readonly page = linkedSignal({ source: () => this.filterForm().value(), computation: () => 0 });
+  protected readonly dealsResource = rxResource({
+    params: () => ({ filters: this.filterForm().value(), page: this.page() }),
+    stream: ({ params }) => this.dealService.getDeals(params.filters, params.page),
   });
 
-  protected readonly deals = computed(() => this.dealsResource.value()?.content ?? []);
-  protected readonly totalDeals = computed(() => this.dealsResource.value()?.totalElements ?? 0);
+  protected readonly searchResult = computed(() => this.dealsResource.hasValue() ? this.dealsResource.value() : undefined);
+  protected readonly deals = computed(() => this.searchResult()?.content ?? []);
+  protected readonly totalDeals = computed(() => this.searchResult()?.totalElements ?? 0);
+  protected readonly totalPages = computed(() => this.searchResult()?.totalPages ?? 0);
 
   protected readonly selectedDeal = computed<Deal | null>(() => {
     const deals = this.deals();
@@ -93,10 +103,30 @@ export class DealFinderComponent {
       return { ...values, dealId: deal.id, loanTermYears: Number(values.loanTermYears) };
   });
 
-  protected readonly simulationResource = resource({
+  protected readonly simulationResource = rxResource({
     params: (): SimulationRequest | undefined => this.simulationRequest() ?? undefined,
-    loader: ({ params }) => this.dealService.calculateSimulation(params),
+    stream: ({ params }) => this.dealService.calculateSimulation(params),
   });
+
+  protected readonly marketResource = rxResource({
+    params: (): string | undefined => this.selectedDeal()?.id,
+    stream: ({ params }) => params ? this.dealService.getDealMarketAnalysis(params) : of(undefined),
+  });
+  protected readonly marketAnalysis = computed(() => this.marketResource.hasValue() ? this.marketResource.value() : undefined);
+
+  protected readonly Math = Math;
+
+  protected marketStatusBadge(status: DvfMarketAnalysis['marketStatus']): { text: string; cssClass: string } {
+    switch (status) {
+      case 'SOUS_EVALUE':
+        return { text: '⚡ Sous-évalué vs DVF (Opportunité)', cssClass: 'status-undervalued' };
+      case 'SUREVALUE':
+        return { text: '⚠️ Surévalué vs DVF (Marge requise)', cssClass: 'status-overvalued' };
+      case 'ALIGNE':
+      default:
+        return { text: '✓ Aligné prix du marché DVF', cssClass: 'status-aligned' };
+    }
+  }
 
   protected readonly globalMetrics = computed(() => {
     const deals = this.deals();
@@ -113,12 +143,10 @@ export class DealFinderComponent {
     };
   });
 
-  protected readonly chartProjection = computed(() => {
-    const projection = this.simulationResource.value()?.projection ?? [];
-    if (projection.length <= 8) return projection;
-    const step = Math.max(1, Math.floor(projection.length / 8));
-    return projection.filter((_, index) => index % step === 0).slice(0, 8);
-  });
+  protected changePage(offset: number): void {
+    const next = this.page() + offset;
+    if (!this.dealsResource.isLoading() && next >= 0 && next < this.totalPages()) this.page.set(next);
+  }
 
   protected selectDeal(id: string): void {
     this.selectedDealId.set(id);
@@ -157,10 +185,18 @@ export class DealFinderComponent {
 
   protected async toggleFavorite(event: Event, deal: Deal): Promise<void> {
     event.stopPropagation();
+    if (this.favoritePendingId()) return;
+    this.favoriteError.set(null);
     this.favoritePendingId.set(deal.id);
     try {
       await this.dealService.setFavorite(deal.id, !deal.favorite);
-      this.dealsResource.reload();
+      if (this.filterModel().favoritesOnly && this.deals().length === 1 && this.page() > 0) {
+        this.page.update(page => page - 1);
+      } else {
+        this.dealsResource.reload();
+      }
+    } catch {
+      this.favoriteError.set('Impossible de modifier ce favori. Réessaie dans un instant.');
     } finally {
       this.favoritePendingId.set(null);
     }
@@ -240,12 +276,6 @@ export class DealFinderComponent {
 
   protected cashFlowTone(value: number | null | undefined): string {
     return (value ?? 0) >= 0 ? 'positive' : 'negative';
-  }
-
-  protected projectionHeight(netWorth: number): number {
-    const values = this.chartProjection().map((point) => point.netWorth);
-    const maximum = Math.max(...values, 1);
-    return Math.max(12, Math.round((netWorth / maximum) * 100));
   }
 
   protected propertyTypeLabel(type: Deal['propertyType']): string {
