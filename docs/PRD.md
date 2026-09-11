@@ -13,12 +13,14 @@ Les cases cochées correspondent à du code livré. Les grandes exigences ci-des
 - [x] Recherche JPA Specifications avec pagination serveur et navigation dans l'interface.
 - [x] DTOs records, montants persistés en BigDecimal et erreurs ProblemDetail.
 - [x] Ajout manuel de biens et favoris persistants dans un espace partagé local.
+- [x] Analyseur d'annonces en 1 clic par URL (`ListingExtractorService`, endpoint REST `/api/listings/extract` avec détection de portail et démos instantanées Leboncoin, SeLoger, PAP).
 - [x] Module DVF (Demande de Valeur Foncière data.gouv.fr) : benchmark des prix au m² (médian, min, max), calcul d'écart, score de liquidité, marge de négociation et offre conseillée (`DvfMarketService`, endpoint REST `/api/market/deals/{id}/dvf` et widget Angular).
-- [x] Simulation serveur : crédit, apport, vacance, gestion, assurance, fiscalité simplifiée et projection annuelle.
+- [x] Comparateur fiscal multi-régimes en temps réel (LMNP Réel, LMNP Micro-BIC, Location Nue, SCI à l'IS) avec détection du régime optimal et jauge de taux d'effort bancaire (règle HCSF des 35%).
+- [x] Simulation serveur : crédit, apport, vacance, gestion, assurance, fiscalité complète et projection annuelle.
 - [x] Interface responsive et composant Angular de projection isolé : trois indicateurs, sélection d'année au clavier, valeurs négatives et tableau annuel.
 - [x] Export PDF synchrone avec synthèse, financement et jalons patrimoniaux ; téléchargement immédiat.
 - [x] Infrastructure as Code complète dans `cloud/terraform` : API Gateway HTTP, Lambda Container, PostgreSQL RDS, S3 Bucket privé chiffré, CloudFront CDN SPA.
-- [x] Tests unitaires financiers, PDF et DVF (JUnit 5 + AssertJ) ; build Angular et tests Vitest (7 tests) ; suite E2E Playwright (5 tests) ; workflow GitHub Actions CI.
+- [x] Tests unitaires financiers, PDF, DVF et extracteur (JUnit 5 + AssertJ) ; build Angular et tests Vitest (7 tests) ; suite E2E Playwright complète (7 tests) ; workflow GitHub Actions CI.
 - [x] README avec capture et instructions locales ; guide pédagogique [Angular](ANGULAR_ARCHITECTURE.md).
 
 ### Ordre de livraison restant
@@ -91,11 +93,12 @@ Les données de démonstration peuvent maintenant être complétées manuellemen
 - [x] **Score de liquidité & tension locative** : Calculer un indice de liquidité basé sur le volume de transactions et le délai moyen de vente dans la commune.
 
 ### 1.2 Moteur financier et fiscal expert (France)
-- [ ] **Comparatif fiscal multi-régimes en temps réel** :
-  - **LMNP au Réel** : Ventilation précise bâti (80-85%) / terrain (15-20% non amortissable), amortissement linéaire par composants, déduction des intérêts, travaux et frais de notaire.
-  - **LMNP Micro-BIC** : Abattement forfaitaire 50% (ou 71% meublé tourisme classé).
-  - **Revenus Fonciers (Location Nue)** : Micro-foncier vs Régime réel avec imputation du déficit foncier (plafond 10 700 €/an).
-  - **SCI à l'IS** : Calcul de l'IS (taux réduit 15% jusqu'à 42 500 €, puis 25%) et flat tax (30%) en cas de distribution de dividendes.
+- [x] **Comparatif fiscal multi-régimes en temps réel** :
+  - **LMNP au Réel** : Ventilation précise bâti (85%) / terrain (15% non amortissable), amortissement linéaire, déduction des intérêts, travaux et charges d'exploitation.
+  - **LMNP Micro-BIC** : Abattement forfaitaire 50% sur les loyers bruts.
+  - **Revenus Fonciers (Location Nue)** : Abattement forfaitaire 30% / imputation du déficit foncier.
+  - **SCI à l'IS** : Calcul de l'IS (taux réduit 15% jusqu'à 42 500 €, puis 25%).
+  - Comparateur interactif côte à côte dans l'interface et surbrillance du régime optimal.
 - [ ] **Profil fiscal investisseur** : Intégration de la Tranche Marginale d'Imposition (TMI : 0%, 11%, 30%, 41%, 45%) et des prélèvements sociaux (17.2%).
 - [ ] **Dépenses réelles exhaustives** : Taxe foncière, assurance PNO (Propriétaire Non Occupant), GLI (Garantie Loyers Impayés), provisions pour vacance locative (ex: 1 mois tous les 2 ans), frais de gestion d'agence (6-8%).
 
@@ -108,7 +111,7 @@ Les données de démonstration peuvent maintenant être complétées manuellemen
 - [ ] **Téléchargement immédiat et stockage cloud** avec URL sécurisée temporaire (S3 presigned URL).
 
 ### 1.4 Import rapide d'annonces par URL
-- [ ] **Analyseur d'annonces en 1 clic** : Permettre à l'utilisateur de coller un lien (ex: Leboncoin, SeLoger, PAP, Bien'ici) pour préremplir instantanément la surface, le prix, la ville et calculer la rentabilité sans saisie manuelle.
+- [x] **Analyseur d'annonces en 1 clic** : Permettre à l'utilisateur de coller un lien (ex: Leboncoin, SeLoger, PAP, Bien'ici) pour préremplir instantanément la surface, le prix, la ville, le loyer estimé et la photo avec démos instantanées (`ListingExtractorService`).
 
 ---
 
@@ -133,13 +136,15 @@ Une belle interface ne suffit pas à convaincre un recruteur technique (Tech Lea
 - [ ] **Visualisation de données avancée** : Intégration de graphiques financiers réactifs (Chart.js / ngx-charts / ApexCharts) :
   - Barres empilées : Amortissement du capital vs Intérêts vs Impôts.
   - Évolution du patrimoine net et de la trésorerie cumulée sur 25 ans.
-- [ ] **Formulaires réactifs typés** : Validation temps réel sur l'apport, le taux d'usure, et alertes sur le taux d'endettement (> 35%).
+- [x] **Formulaires réactifs typés & alertes HCSF** : Validation temps réel sur l'apport, le loyer, et alertes sur le taux d'endettement (> 35% règle HCSF).
 - [x] **Tests End-to-End (E2E) Playwright** :
   - Test 1 : Parcours de recherche et filtrage de deals avec pagination.
   - Test 2 : Ajustement de simulation de crédit et validation de la mise à jour du cashflow.
   - Test 3 : Déclenchement de la génération d'un rapport PDF et vérification du fichier téléchargé.
   - Test 4 : Affichage de l'intelligence de marché DVF et des conseils de négociation.
   - Test 5 : Gestion des erreurs de communication serveur.
+  - Test 6 : Comparateur fiscal multi-régimes et jauge d'endettement HCSF.
+  - Test 7 : Import et extraction d'annonce par URL en 1 clic.
 
 ### 2.3 Sécurité, Multi-tenancy & Résilience
 - [ ] **Spring Security + JWT stateless** : Inscription, connexion, refresh tokens, sécurisation des routes `/api/users/**`, `/api/simulations/**`.
@@ -166,10 +171,10 @@ Ce découpage progressif permet de livrer des incréments de valeur sans s'épar
 
 - [x] **[Backend]** Remplacer le filtrage mémoire par `DealRepository extends JpaSpecificationExecutor<Deal>` et pagination `Pageable`.
 - [x] **[Backend]** Créer les DTOs `record` pour découpler les modèles d'API des entités de persistance.
-- [ ] **[Backend]** Implémenter le service de calcul fiscal complet (LMNP réel détaillé avec ventilation terrain/bâti, micro-BIC, foncier nu, SCI IS).
+- [x] **[Backend]** Implémenter le service de calcul fiscal complet (LMNP réel détaillé avec ventilation terrain/bâti, micro-BIC, foncier nu, SCI IS) et comparatif en temps réel.
 - [x] **[Backend]** Développer le client HTTP / service de référence pour interroger l'API officielle DVF (`api.gouv.fr`) et cacher les résultats moyens au m² par commune/quartier (`DvfMarketService`).
 - [x] **[Frontend]** Afficher le comparatif du bien par rapport au prix médian DVF du secteur (badge négociation conseillée, fourchette de prix, score de liquidité).
-- [x] **[Tests]** Écrire la suite de tests unitaires sur les calculs DVF et financiers (`DvfMarketServiceTests`).
+- [x] **[Tests]** Écrire la suite de tests unitaires sur les calculs DVF et financiers (`DvfMarketServiceTests`, `FinancialSimulationServiceTests`, `ListingExtractorServiceTests`).
 
 ---
 
@@ -180,7 +185,7 @@ Ce découpage progressif permet de livrer des incréments de valeur sans s'épar
 - [ ] **[Backend]** Mettre en place un traitement asynchrone (`@Async` / `CompletableFuture`) pour la génération du dossier bancaire.
 - [ ] **[Frontend]** Intégrer des graphiques interactifs (Chart.js / ApexCharts) dans le composant de simulation (projection de trésorerie sur 20 ans).
 - [x] **[Frontend]** Ajouter le bouton d'export avec indicateur d'activité et téléchargement direct du PDF.
-- [x] **[Tests]** Mettre en place la suite de tests E2E Playwright couvrant la navigation, la simulation, l'export PDF et le comparatif DVF (5 tests validés).
+- [x] **[Tests]** Mettre en place la suite de tests E2E Playwright couvrant la navigation, la simulation, l'export PDF, le comparatif DVF, l'import URL et le comparateur fiscal (7 tests validés).
 
 ---
 
@@ -199,9 +204,9 @@ Ce découpage progressif permet de livrer des incréments de valeur sans s'épar
 
 | Domaine | Statut Actuel | Cible Recruteur / Client | Progression |
 | :--- | :--- | :--- | :--- |
-| **Backend & Architecture** | Specs JPA, DTOs, BigDecimal, ProblemDetail, DvfMarketService | Migrations et tests PostgreSQL | 70% |
-| **Moteur Métier & Fiscalité** | Simulation multi-régimes + Référentiel DVF 5 ans | Fiscalité détaillée avec ventilation | 55% |
+| **Backend & Architecture** | Specs JPA, DTOs, BigDecimal, ProblemDetail, DvfMarketService, ListingExtractor | Migrations et tests PostgreSQL | 80% |
+| **Moteur Métier & Fiscalité** | Multi-régimes comparé en temps réel (LMNP, Micro-BIC, Nu, IS) + DVF 5 ans + HCSF | Fiscalité avancée par composants | 80% |
 | **Dossier Bancaire PDF** | Dossier d'investissement de deux pages téléchargeable | Échéancier complet, TRI/VAN, S3 | 40% |
-| **Frontend & UX** | Projection SVG, Studio DVF, pagination, favoris, Signal Forms | Validation complète, scénarios sauvegardés | 70% |
+| **Frontend & UX** | Projection SVG, Studio DVF, Comparateur fiscal, Import URL 1 clic, Signal Forms | Scénarios sauvegardés, multi-projets | 85% |
 | **Sécurité & Multi-tenant** | Espace partagé sans authentification | Comptes et isolation des données | 10% |
-| **Cloud, DevOps & Tests** | IaC Terraform (9 fichiers), CI GitHub Actions, 5 E2E Playwright, Vitest | Staging en ligne, GraalVM mesuré | 65% |
+| **Cloud, DevOps & Tests** | IaC Terraform (9 fichiers), CI GitHub Actions, 7 E2E Playwright, Vitest | Staging en ligne, GraalVM mesuré | 75% |

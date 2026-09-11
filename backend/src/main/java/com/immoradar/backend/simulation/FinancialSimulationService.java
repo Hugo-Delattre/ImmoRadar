@@ -40,12 +40,91 @@ public class FinancialSimulationService {
         var netYield = percentage(annualRent.subtract(operatingExpenses), totalProjectCost);
         var breakEvenRent = operatingExpenses.add(monthlyMortgage.multiply(TWELVE)).add(taxAnnual)
                 .divide(TWELVE, 2, RoundingMode.HALF_UP);
+        var taxComparison = buildTaxComparison(deal, request, annualRent, operatingExpenses, firstYearInterest, monthlyMortgage, totalProjectCost);
+        // Indicative debt ratio based on French average investor household net income (3 500€/month)
+        var debtEffortRatio = monthlyMortgage.signum() > 0
+                ? monthlyMortgage.divide(new BigDecimal("3500"), 4, RoundingMode.HALF_UP).multiply(HUNDRED).setScale(1, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
 
         return new SimulationResponse(
                 money(totalProjectCost), money(loanAmount), money(monthlyMortgage), money(monthlyCashFlow),
                 percent(grossYield), percent(netYield), money(taxAnnual), money(operatingExpenses),
                 money(breakEvenRent), cashFlowStatus(monthlyCashFlow),
-                buildProjection(deal, request, loanAmount, monthlyMortgage));
+                buildProjection(deal, request, loanAmount, monthlyMortgage),
+                taxComparison, debtEffortRatio);
+    }
+
+    private List<TaxComparisonItem> buildTaxComparison(
+            Deal deal,
+            SimulationRequest request,
+            BigDecimal annualRent,
+            BigDecimal operatingExpenses,
+            BigDecimal firstYearInterest,
+            BigDecimal monthlyMortgage,
+            BigDecimal totalProjectCost) {
+        var regimes = List.of(
+                TaxRegime.REEL_LMNP,
+                TaxRegime.MICRO_BIC,
+                TaxRegime.NU,
+                TaxRegime.SCI_IS
+        );
+
+        TaxRegime bestRegime = TaxRegime.REEL_LMNP;
+        BigDecimal bestCashFlow = new BigDecimal("-999999999");
+
+        for (var regime : regimes) {
+            var tempRequest = new SimulationRequest(
+                    request.dealId(), request.downpayment(), request.interestRate(),
+                    request.loanTermYears(), regime, request.marginalTaxRate(),
+                    request.vacancyRate(), request.managementRate(), request.insuranceAnnual(),
+                    request.rentGrowthRate(), request.propertyGrowthRate()
+            );
+            var tax = annualTax(deal, tempRequest, annualRent, operatingExpenses, firstYearInterest);
+            var cashFlow = annualRent.subtract(operatingExpenses)
+                    .subtract(monthlyMortgage.multiply(TWELVE))
+                    .subtract(tax)
+                    .divide(TWELVE, 2, RoundingMode.HALF_UP);
+            if (cashFlow.compareTo(bestCashFlow) > 0) {
+                bestCashFlow = cashFlow;
+                bestRegime = regime;
+            }
+        }
+
+        var list = new ArrayList<TaxComparisonItem>();
+        for (var regime : regimes) {
+            var tempRequest = new SimulationRequest(
+                    request.dealId(), request.downpayment(), request.interestRate(),
+                    request.loanTermYears(), regime, request.marginalTaxRate(),
+                    request.vacancyRate(), request.managementRate(), request.insuranceAnnual(),
+                    request.rentGrowthRate(), request.propertyGrowthRate()
+            );
+            var tax = annualTax(deal, tempRequest, annualRent, operatingExpenses, firstYearInterest);
+            var cashFlow = annualRent.subtract(operatingExpenses)
+                    .subtract(monthlyMortgage.multiply(TWELVE))
+                    .subtract(tax)
+                    .divide(TWELVE, 2, RoundingMode.HALF_UP);
+            var netYield = percentage(annualRent.subtract(operatingExpenses).subtract(tax), totalProjectCost);
+
+            var isRecommended = (regime == bestRegime);
+            var label = switch (regime) {
+                case REEL_LMNP -> "LMNP Réel";
+                case MICRO_BIC -> "LMNP Micro-BIC";
+                case NU -> "Location Nue";
+                case SCI_IS -> "SCI à l'IS";
+            };
+            var advantage = switch (regime) {
+                case REEL_LMNP -> "Amortissement bâti (85%) & déduction intégrale des travaux et intérêts";
+                case MICRO_BIC -> "Abattement forfaitaire simple de 50% sur les loyers bruts";
+                case NU -> "Régime forfaitaire (abattement 30%) avec imputation déficit foncier";
+                case SCI_IS -> "Taux réduit IS à 15% jusqu'à 42 500€ de bénéfice, capitalisation";
+            };
+
+            list.add(new TaxComparisonItem(
+                    regime, label, money(tax), money(cashFlow), percent(netYield), isRecommended, advantage
+            ));
+        }
+
+        return list;
     }
 
     private ArrayList<ProjectionPoint> buildProjection(

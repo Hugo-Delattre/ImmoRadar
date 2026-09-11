@@ -52,6 +52,15 @@ class FinancialSimulationServiceTests {
         assertThat(microResult.monthlyCashFlow()).isLessThan(realResult.monthlyCashFlow());
     }
 
+    @Test
+    void shouldProvideMultiRegimeTaxComparisonAndDebtEffort() {
+        var result = simulationService.simulate(request(TaxRegime.REEL_LMNP, "3.5"));
+
+        assertThat(result.taxComparison()).hasSize(4);
+        assertThat(result.taxComparison()).anyMatch(TaxComparisonItem::isRecommended);
+        assertThat(result.debtEffortRatio()).isPositive();
+    }
+
     private SimulationRequest request(TaxRegime regime, String interestRate) {
         return new SimulationRequest(
                 "deal-1", amount("30000"), amount(interestRate), 20, regime,

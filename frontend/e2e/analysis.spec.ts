@@ -26,6 +26,13 @@ test.beforeEach(async ({ page }) => {
         remainingLoan: Math.max(0, 170000 - (i + 1) * 8500), estimatedPropertyValue: 180000,
         netWorth: i === 0 ? -1000 : i * 10000,
       })),
+      taxComparison: [
+        { regime: 'REEL_LMNP', label: 'LMNP Réel', annualTax: 250, monthlyCashFlow: 380, netYield: 6.2, isRecommended: true, advantage: 'Amortissement bâti' },
+        { regime: 'MICRO_BIC', label: 'LMNP Micro-BIC', annualTax: 750, monthlyCashFlow: 338, netYield: 5.8, isRecommended: false, advantage: 'Abattement 50%' },
+        { regime: 'NU', label: 'Location Nue', annualTax: 950, monthlyCashFlow: 320, netYield: 5.5, isRecommended: false, advantage: 'Micro-foncier' },
+        { regime: 'SCI_IS', label: "SCI à l'IS", annualTax: 450, monthlyCashFlow: 360, netYield: 6.0, isRecommended: false, advantage: 'Taux 15%' },
+      ],
+      debtEffortRatio: 28.5,
     } });
   });
   await page.route('**/api/market/**', async route => {
@@ -43,6 +50,23 @@ test.beforeEach(async ({ page }) => {
       liquidityScore: 'A',
       averageSaleDelayDays: 45,
       advice: 'Bien positionné sous la médiane DVF du quartier. Forte tension locative.',
+    } });
+  });
+  await page.route('**/api/listings/extract', async route => {
+    await route.fulfill({ json: {
+      title: 'Maison 3 pièces 74 m²',
+      price: 180000,
+      monthlyRent: 950,
+      surface: 74,
+      location: 'Le Havre (76600)',
+      propertyType: 'House',
+      renovationCost: 0,
+      monthlyCharges: 40,
+      propertyTax: 890,
+      imageUrl: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop&q=80',
+      description: 'Maison 3 pièces 74 m² avec 2 chambres, terrasse de 40 m² et garage.',
+      sourceUrl: 'https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816',
+      platform: 'Leboncoin',
     } });
   });
 });
@@ -93,4 +117,24 @@ test('displays DVF market intelligence and negotiation recommendation', async ({
   await expect(page.getByText('Score A')).toBeVisible();
   await expect(page.getByText('Bien positionné sous la médiane DVF du quartier.')).toBeVisible();
 });
+
+test('displays multi-regime tax comparison and debt effort alert', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('Taux d’effort bancaire indicatif (HCSF)')).toBeVisible();
+  await expect(page.getByText('28.5%')).toBeVisible();
+  await expect(page.getByText('Comparatif multi-régimes en temps réel')).toBeVisible();
+  await expect(page.getByText('LMNP Réel')).toBeVisible();
+  await expect(page.getByText('Optimal')).toBeVisible();
+});
+
+test('extracts listing via URL in 1 click and populates creation form', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Ajouter un bien' }).click();
+  await expect(page.getByText('Importer directement depuis une annonce')).toBeVisible();
+  await page.getByRole('button', { name: 'Leboncoin · Maison Le Havre' }).click();
+  await expect(page.getByText('Annonce importée avec succès (Leboncoin)')).toBeVisible();
+  await expect(page.getByPlaceholder('Ex. T3 lumineux proche gare')).toHaveValue('Maison 3 pièces 74 m²');
+  await expect(page.getByPlaceholder('Ex. Angers (49)')).toHaveValue('Le Havre (76600)');
+});
+
 

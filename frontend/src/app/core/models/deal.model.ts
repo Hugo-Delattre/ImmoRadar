@@ -60,6 +60,32 @@ export interface ProjectionPoint {
   netWorth: number;
 }
 
+export interface TaxComparisonItem {
+  regime: TaxRegime;
+  label: string;
+  annualTax: number;
+  monthlyCashFlow: number;
+  netYield: number;
+  isRecommended: boolean;
+  advantage: string;
+}
+
+export interface ListingExtractResult {
+  title: string;
+  price: number;
+  monthlyRent: number;
+  surface: number;
+  location: string;
+  propertyType: PropertyType;
+  renovationCost: number;
+  monthlyCharges: number;
+  propertyTax: number;
+  imageUrl: string;
+  description: string;
+  sourceUrl: string;
+  platform: string;
+}
+
 export interface SimulationResult {
   totalProjectCost: number;
   loanAmount: number;
@@ -72,6 +98,8 @@ export interface SimulationResult {
   breakEvenRent: number;
   cashFlowStatus: 'POSITIF' | 'EQUILIBRE' | 'A_OPTIMISER';
   projection: ProjectionPoint[];
+  taxComparison?: TaxComparisonItem[];
+  debtEffortRatio?: number;
 }
 
 export interface CreateDealRequest {

@@ -55,4 +55,10 @@ export class DealService {
       `/api/market/deals/${encodeURIComponent(dealId)}/dvf`
     );
   }
+
+  extractListingFromUrl(url: string): Promise<import('../models/deal.model').ListingExtractResult> {
+    return firstValueFrom(
+      this.http.post<import('../models/deal.model').ListingExtractResult>('/api/listings/extract', { url })
+    );
+  }
 }

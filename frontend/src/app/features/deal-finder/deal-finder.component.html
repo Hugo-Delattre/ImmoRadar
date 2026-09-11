@@ -276,6 +276,54 @@
                 </div>
 
                 <app-projection-chart [projection]="result.projection" />
+
+                <div class="debt-ratio-bar" [class.warning]="(result.debtEffortRatio ?? 0) > 35">
+                  <div class="debt-info">
+                    <span>Taux d’effort bancaire indicatif (HCSF)</span>
+                    <strong>{{ result.debtEffortRatio ?? 0 }}%</strong>
+                  </div>
+                  <div class="debt-track">
+                    <div class="debt-fill" [style.width.%]="Math.min(100, (result.debtEffortRatio ?? 0))" [class.danger]="(result.debtEffortRatio ?? 0) > 35"></div>
+                    <div class="hcsf-limit-marker" title="Plafond HCSF légal : 35%"><span>35%</span></div>
+                  </div>
+                  <small>{{ (result.debtEffortRatio ?? 0) <= 35 ? '✓ Conforme au seuil maximal d’endettement de 35% recommandé par le HCSF.' : '⚠️ Dépassement du seuil HCSF de 35% : un apport supérieur ou un allongement de durée est conseillé.' }}</small>
+                </div>
+
+                @if (result.taxComparison && result.taxComparison.length > 0) {
+                  <div class="tax-comparison-card">
+                    <div class="tax-comp-header">
+                      <div>
+                        <span class="tax-tag">Moteur fiscal expert</span>
+                        <h4>Comparatif multi-régimes en temps réel</h4>
+                      </div>
+                      <small>Clique sur un régime pour l'appliquer</small>
+                    </div>
+
+                    <div class="tax-regimes-grid">
+                      @for (item of result.taxComparison; track item.regime) {
+                        <button
+                          type="button"
+                          class="tax-regime-pill"
+                          [class.is-active]="simulationForm().value().taxRegime === item.regime"
+                          [class.is-recommended]="item.isRecommended"
+                          (click)="selectTaxRegime(item.regime)">
+                          <div class="regime-top">
+                            <strong>{{ item.label }}</strong>
+                            @if (item.isRecommended) {
+                              <span class="rec-badge">Optimal</span>
+                            }
+                          </div>
+                          <div class="regime-metrics">
+                            <div><small>Impôt</small><span>{{ formatCurrency(item.annualTax) }}<small>/an</small></span></div>
+                            <div><small>Cash-flow</small><b [class.positive]="item.monthlyCashFlow >= 0" [class.negative]="item.monthlyCashFlow < 0">{{ formatSignedCurrency(item.monthlyCashFlow) }}</b></div>
+                          </div>
+                          <p class="regime-adv">{{ item.advantage }}</p>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+
                 <div class="result-footer"><span>Coût total du projet</span><strong>{{ formatCurrency(result.totalProjectCost) }}</strong></div>
                 <button class="report-button" type="button" (click)="downloadInvestmentReport()" [disabled]="isDownloadingReport()">
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -303,6 +351,44 @@
     <div class="modal-backdrop" role="presentation" (click)="closeModalFromBackdrop($event)" (keydown.escape)="closeCreateModal()">
       <section class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
         <header><div><span class="eyebrow">Nouvelle analyse</span><h2 id="create-title">Ajouter une opportunité</h2><p>Renseigne les chiffres de l’annonce. Tu pourras affiner le financement ensuite.</p></div><button type="button" (click)="closeCreateModal()" aria-label="Fermer">×</button></header>
+
+        <section class="url-import-card" aria-label="Importation rapide d’annonce par URL">
+          <div class="url-import-header">
+            <div>
+              <span class="url-tag">⚡ Analyseur en 1 clic</span>
+              <strong>Importer directement depuis une annonce</strong>
+            </div>
+            <small>Leboncoin, SeLoger, PAP, Bien'Ici…</small>
+          </div>
+          <div class="url-input-wrap">
+            <input
+              type="url"
+              [value]="importUrl()"
+              (input)="importUrl.set($any($event.target).value)"
+              placeholder="Ex. https://www.leboncoin.fr/ad/ventes_immobilieres/..."
+              [disabled]="isExtractingUrl()" />
+            <button
+              type="button"
+              class="url-import-btn"
+              (click)="extractListing()"
+              [disabled]="isExtractingUrl()">
+              {{ isExtractingUrl() ? 'Extraction…' : 'Analyser l’annonce' }}
+            </button>
+          </div>
+          <div class="url-shortcuts">
+            <small>Démos rapides :</small>
+            <button type="button" (click)="fillDemoListing('leboncoin')">Leboncoin · Maison Le Havre</button>
+            <button type="button" (click)="fillDemoListing('seloger')">SeLoger · Studio Paris</button>
+            <button type="button" (click)="fillDemoListing('pap')">PAP · T2 Bordeaux</button>
+          </div>
+          @if (extractUrlError()) {
+            <p class="url-error" role="alert">{{ extractUrlError() }}</p>
+          }
+          @if (extractSuccessMessage()) {
+            <p class="url-success" role="status">{{ extractSuccessMessage() }}</p>
+          }
+        </section>
+
         <form (submit)="submitCreateDeal(); $event.preventDefault()">
           @if (submitError()) { <div class="form-error" role="alert">{{ submitError() }}</div> }
           <label class="full-field"><span>Titre du bien *</span><input type="text" [formField]="newDealForm.title" placeholder="Ex. T3 lumineux proche gare" />@if (submitFieldErrors()['title']; as error) { <small class="field-error">{{ error }}</small> }</label>

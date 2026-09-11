@@ -40,6 +40,11 @@ export class DealFinderComponent {
   protected readonly isDownloadingReport = signal(false);
   protected readonly reportError = signal<string | null>(null);
 
+  protected readonly importUrl = signal('');
+  protected readonly isExtractingUrl = signal(false);
+  protected readonly extractUrlError = signal<string | null>(null);
+  protected readonly extractSuccessMessage = signal<string | null>(null);
+
   protected readonly newDealModel = signal<CreateDealRequest>({
     title: '',
     price: 180000,
@@ -202,10 +207,63 @@ export class DealFinderComponent {
     }
   }
 
+  protected selectTaxRegime(regime: TaxRegime): void {
+    this.simulationModel.update((current) => ({ ...current, taxRegime: regime }));
+  }
+
   protected openCreateModal(): void {
     this.submitError.set(null);
     this.submitFieldErrors.set({});
+    this.importUrl.set('');
+    this.extractUrlError.set(null);
+    this.extractSuccessMessage.set(null);
     this.isCreateModalOpen.set(true);
+  }
+
+  protected async extractListing(customUrl?: string): Promise<void> {
+    const url = (customUrl ?? this.importUrl()).trim();
+    if (!url) {
+      this.extractUrlError.set('Colle une URL d’annonce valide pour l’importer.');
+      return;
+    }
+
+    this.isExtractingUrl.set(true);
+    this.extractUrlError.set(null);
+    this.extractSuccessMessage.set(null);
+
+    try {
+      const extracted = await this.dealService.extractListingFromUrl(url);
+      this.newDealModel.update((model) => ({
+        ...model,
+        title: extracted.title,
+        price: extracted.price,
+        monthlyRent: extracted.monthlyRent,
+        surface: extracted.surface,
+        location: extracted.location,
+        propertyType: extracted.propertyType,
+        renovationCost: extracted.renovationCost,
+        monthlyCharges: extracted.monthlyCharges,
+        propertyTax: extracted.propertyTax,
+        imageUrl: extracted.imageUrl,
+        description: extracted.description,
+      }));
+      this.extractSuccessMessage.set(`✓ Annonce importée avec succès (${extracted.platform}) !`);
+    } catch {
+      this.extractUrlError.set('Impossible d’extraire automatiquement cette annonce. Remplis les champs manuellement.');
+    } finally {
+      this.isExtractingUrl.set(false);
+    }
+  }
+
+  protected fillDemoListing(preset: 'leboncoin' | 'seloger' | 'pap'): void {
+    const urls = {
+      leboncoin: 'https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816',
+      seloger: 'https://www.seloger.com/annonces/achat/appartement/paris-11eme-75/studio-renove',
+      pap: 'https://www.pap.fr/annonces/appartement-bordeaux-centre-t2',
+    };
+    const url = urls[preset];
+    this.importUrl.set(url);
+    this.extractListing(url);
   }
 
   protected closeCreateModal(): void {
