@@ -86,10 +86,11 @@ public class InvestmentReportService {
         location.setSpacingAfter(24);
         document.add(location);
 
-        var highlight = new PdfPTable(new float[]{1.4f, 1f});
+        var highlight = new PdfPTable(new float[]{1.2f, 1f, 1.2f});
         highlight.setWidthPercentage(100);
         highlight.addCell(highlightCell("Cash-flow mensuel", signedCurrency(simulation.monthlyCashFlow())));
         highlight.addCell(highlightCell("Rendement net", simulation.netYield() + " %"));
+        highlight.addCell(highlightCell("TRI (Horizon " + simulation.projection().size() + " ans)", simulation.internalRateOfReturn() + " %"));
         highlight.setSpacingAfter(15);
         document.add(highlight);
 
@@ -100,13 +101,15 @@ public class InvestmentReportService {
     }
 
     private PdfPTable metricTable(SimulationResponse simulation) {
-        var table = new PdfPTable(3);
+        var table = new PdfPTable(4);
         table.setWidthPercentage(100);
         table.setSpacingAfter(24);
         table.addCell(metricCell("Coût total", currency(simulation.totalProjectCost())));
         table.addCell(metricCell("Montant financé", currency(simulation.loanAmount())));
-        table.addCell(metricCell("Mensualité", currency(simulation.monthlyMortgage())));
+        table.addCell(metricCell("Mensualité crédit", currency(simulation.monthlyMortgage())));
         table.addCell(metricCell("Rendement brut", simulation.grossYield() + " %"));
+        table.addCell(metricCell("TRI (IRR)", simulation.internalRateOfReturn() + " %"));
+        table.addCell(metricCell("VAN (NPV à 4%)", signedCurrency(simulation.netPresentValue())));
         table.addCell(metricCell("Fiscalité annuelle", currency(simulation.taxAnnual())));
         table.addCell(metricCell("Loyer d'équilibre", currency(simulation.breakEvenRent())));
         return table;
@@ -117,11 +120,13 @@ public class InvestmentReportService {
         table.setWidthPercentage(100);
         table.setSpacingAfter(24);
         addRow(table, "Prix d'achat", currency(deal.getPrice()));
-        addRow(table, "Travaux", currency(deal.getRenovationCost()));
+        addRow(table, "Frais de notaire estimés (7.5%)", currency(deal.getPrice().multiply(new BigDecimal("0.075"))));
+        addRow(table, "Travaux prévus", currency(deal.getRenovationCost()));
         addRow(table, "Apport personnel", currency(request.downpayment()));
         addRow(table, "Taux nominal / durée", request.interestRate() + " % / " + request.loanTermYears() + " ans");
-        addRow(table, "Régime fiscal", request.taxRegime().name().replace('_', ' '));
-        addRow(table, "Vacance / gestion", request.vacancyRate() + " % / " + request.managementRate() + " %");
+        addRow(table, "Taux d'effort bancaire (HCSF)", simulation.debtEffortRatio() + " % (max 35%)");
+        addRow(table, "Régime fiscal sélectionné", request.taxRegime().name().replace('_', ' '));
+        addRow(table, "Vacance / gestion d'agence", request.vacancyRate() + " % / " + request.managementRate() + " %");
         addRow(table, "Charges d'exploitation annuelles", currency(simulation.annualOperatingExpenses()));
         return table;
     }

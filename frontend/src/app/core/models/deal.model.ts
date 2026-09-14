@@ -100,6 +100,8 @@ export interface SimulationResult {
   projection: ProjectionPoint[];
   taxComparison?: TaxComparisonItem[];
   debtEffortRatio?: number;
+  internalRateOfReturn?: number;
+  netPresentValue?: number;
 }
 
 export interface CreateDealRequest {

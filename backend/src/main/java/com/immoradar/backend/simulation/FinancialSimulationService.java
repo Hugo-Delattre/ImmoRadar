@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class FinancialSimulationService {
@@ -46,12 +47,89 @@ public class FinancialSimulationService {
                 ? monthlyMortgage.divide(new BigDecimal("3500"), 4, RoundingMode.HALF_UP).multiply(HUNDRED).setScale(1, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
+        var projection = buildProjection(deal, request, loanAmount, monthlyMortgage);
+        var irr = calculateIrr(request, projection, notaryFees);
+        var npv = calculateNpv(request, projection, notaryFees);
+
         return new SimulationResponse(
                 money(totalProjectCost), money(loanAmount), money(monthlyMortgage), money(monthlyCashFlow),
                 percent(grossYield), percent(netYield), money(taxAnnual), money(operatingExpenses),
                 money(breakEvenRent), cashFlowStatus(monthlyCashFlow),
-                buildProjection(deal, request, loanAmount, monthlyMortgage),
-                taxComparison, debtEffortRatio);
+                projection,
+                taxComparison, debtEffortRatio,
+                percent(irr), money(npv));
+    }
+
+    private BigDecimal calculateIrr(SimulationRequest request, List<ProjectionPoint> projection, BigDecimal notaryFees) {
+        if (projection == null || projection.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        int n = projection.size();
+        double initialEquity = request.downpayment().signum() > 0
+                ? request.downpayment().doubleValue()
+                : (notaryFees.signum() > 0 ? notaryFees.doubleValue() : 1000.0);
+
+        double[] cf = new double[n + 1];
+        for (int t = 1; t <= n; t++) {
+            var pt = projection.get(t - 1);
+            if (t < n) {
+                cf[t] = pt.annualCashFlow().doubleValue();
+            } else {
+                // Exit year: annual cash flow + terminal equity (property value - remaining debt)
+                double terminalEquity = pt.estimatedPropertyValue().doubleValue() - pt.remainingLoan().doubleValue();
+                cf[t] = pt.annualCashFlow().doubleValue() + Math.max(0.0, terminalEquity);
+            }
+        }
+
+        // Newton-Raphson iteration for IRR
+        double r = 0.08;
+        for (int iter = 0; iter < 50; iter++) {
+            double f = -initialEquity;
+            double df = 0.0;
+            for (int t = 1; t <= n; t++) {
+                double denom = Math.pow(1.0 + r, t);
+                f += cf[t] / denom;
+                df += (-t * cf[t]) / (denom * (1.0 + r));
+            }
+            if (Math.abs(f) < 1e-4) {
+                break;
+            }
+            if (Math.abs(df) < 1e-8) {
+                break;
+            }
+            double nextR = r - (f / df);
+            if (Double.isNaN(nextR) || Double.isInfinite(nextR)) {
+                break;
+            }
+            nextR = Math.max(-0.5, Math.min(3.0, nextR));
+            if (Math.abs(nextR - r) < 1e-5) {
+                r = nextR;
+                break;
+            }
+            r = nextR;
+        }
+        return BigDecimal.valueOf(r * 100.0);
+    }
+
+    private BigDecimal calculateNpv(SimulationRequest request, List<ProjectionPoint> projection, BigDecimal notaryFees) {
+        if (projection == null || projection.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        int n = projection.size();
+        double initialEquity = request.downpayment().signum() > 0
+                ? request.downpayment().doubleValue()
+                : (notaryFees.signum() > 0 ? notaryFees.doubleValue() : 1000.0);
+
+        double discountRate = 0.04; // 4% hurdle rate benchmark
+        double npv = -initialEquity;
+        for (int t = 1; t <= n; t++) {
+            var pt = projection.get(t - 1);
+            double cf = (t < n)
+                    ? pt.annualCashFlow().doubleValue()
+                    : pt.annualCashFlow().doubleValue() + Math.max(0.0, pt.estimatedPropertyValue().doubleValue() - pt.remainingLoan().doubleValue());
+            npv += cf / Math.pow(1.0 + discountRate, t);
+        }
+        return BigDecimal.valueOf(npv);
     }
 
     private List<TaxComparisonItem> buildTaxComparison(

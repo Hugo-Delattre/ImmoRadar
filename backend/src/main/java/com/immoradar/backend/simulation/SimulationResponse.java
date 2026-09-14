@@ -16,7 +16,9 @@ public record SimulationResponse(
         String cashFlowStatus,
         List<ProjectionPoint> projection,
         List<TaxComparisonItem> taxComparison,
-        BigDecimal debtEffortRatio
+        BigDecimal debtEffortRatio,
+        BigDecimal internalRateOfReturn,
+        BigDecimal netPresentValue
 ) {
     public SimulationResponse {
         projection = List.copyOf(projection);
@@ -37,6 +39,6 @@ public record SimulationResponse(
             List<ProjectionPoint> projection) {
         this(totalProjectCost, loanAmount, monthlyMortgage, monthlyCashFlow, grossYield, netYield,
                 taxAnnual, annualOperatingExpenses, breakEvenRent, cashFlowStatus, projection,
-                List.of(), BigDecimal.ZERO);
+                List.of(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     }
 }

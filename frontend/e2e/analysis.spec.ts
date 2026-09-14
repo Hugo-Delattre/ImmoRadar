@@ -33,6 +33,8 @@ test.beforeEach(async ({ page }) => {
         { regime: 'SCI_IS', label: "SCI à l'IS", annualTax: 450, monthlyCashFlow: 360, netYield: 6.0, isRecommended: false, advantage: 'Taux 15%' },
       ],
       debtEffortRatio: 28.5,
+      internalRateOfReturn: 10.4,
+      netPresentValue: 48200,
     } });
   });
   await page.route('**/api/market/**', async route => {

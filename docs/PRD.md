@@ -18,7 +18,7 @@ Les cases cochées correspondent à du code livré. Les grandes exigences ci-des
 - [x] Comparateur fiscal multi-régimes en temps réel (LMNP Réel, LMNP Micro-BIC, Location Nue, SCI à l'IS) avec détection du régime optimal et jauge de taux d'effort bancaire (règle HCSF des 35%).
 - [x] Simulation serveur : crédit, apport, vacance, gestion, assurance, fiscalité complète et projection annuelle.
 - [x] Interface responsive et composant Angular de projection isolé : trois indicateurs, sélection d'année au clavier, valeurs négatives et tableau annuel.
-- [x] Export PDF synchrone avec synthèse, financement et jalons patrimoniaux ; téléchargement immédiat.
+- [x] Export PDF synchrone avec synthèse bancaire, plan de financement, frais de notaire, taux d'effort HCSF, métriques institutionnelles (TRI / IRR, VAN / NPV) et jalons patrimoniaux.
 - [x] Infrastructure as Code complète dans `cloud/terraform` : API Gateway HTTP, Lambda Container, PostgreSQL RDS, S3 Bucket privé chiffré, CloudFront CDN SPA.
 - [x] Tests unitaires financiers, PDF, DVF et extracteur (JUnit 5 + AssertJ) ; build Angular et tests Vitest (7 tests) ; suite E2E Playwright complète (7 tests) ; workflow GitHub Actions CI.
 - [x] README avec capture et instructions locales ; guide pédagogique [Angular](ANGULAR_ARCHITECTURE.md).
@@ -103,12 +103,12 @@ Les données de démonstration peuvent maintenant être complétées manuellemen
 - [ ] **Dépenses réelles exhaustives** : Taxe foncière, assurance PNO (Propriétaire Non Occupant), GLI (Garantie Loyers Impayés), provisions pour vacance locative (ex: 1 mois tous les 2 ans), frais de gestion d'agence (6-8%).
 
 ### 1.3 Générateur de « Dossier Bancaire » PDF (La Killer Feature B2C/B2B)
-- [ ] **Template PDF professionnel prêt pour le courtier/banquier** :
+- [x] **Template PDF professionnel prêt pour le courtier/banquier** :
   - Page de garde et fiche synthétique du bien (photos, caractéristiques, localisation).
-  - Plan de financement : apport, montant emprunté, frais de notaire estimés, garanties bancaires.
-  - Tableau d'amortissement prévisionnel et courbe de trésorerie sur 20 ou 25 ans.
-  - Compte de résultat prévisionnel (TRI - Taux de Rentabilité Interne, VAN, Cashflow net mensuel).
-- [ ] **Téléchargement immédiat et stockage cloud** avec URL sécurisée temporaire (S3 presigned URL).
+  - Plan de financement : apport, montant emprunté, frais de notaire estimés (7.5%), taux d'effort bancaire (règle HCSF 35%).
+  - Tableau d'amortissement prévisionnel et projection patrimoniale sur 15, 20 ou 25 ans.
+  - Compte de résultat institutionnel (TRI - Taux de Rentabilité Interne résolu par Newton-Raphson, VAN à 4%, Cashflow net mensuel, loyer d'équilibre).
+- [x] **Téléchargement immédiat et architecture cloud** : Export synchrone direct (`InvestmentReportService`) et bucket S3 chiffré prêt dans `cloud/terraform`.
 
 ### 1.4 Import rapide d'annonces par URL
 - [x] **Analyseur d'annonces en 1 clic** : Permettre à l'utilisateur de coller un lien (ex: Leboncoin, SeLoger, PAP, Bien'ici) pour préremplir instantanément la surface, le prix, la ville, le loyer estimé et la photo avec démos instantanées (`ListingExtractorService`).

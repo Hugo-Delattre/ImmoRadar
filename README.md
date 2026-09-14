@@ -14,14 +14,25 @@ ImmoRadar est une application full-stack qui transforme une annonce immobilière
 
 - cockpit responsive avec états de chargement et d'erreur, navigation clavier et contraste soigné ;
 - recherche paginée côté serveur par localisation, prix, rendement, cash-flow et favoris ;
-- ajout d'une opportunité et gestion persistante des favoris ;
-- indicateurs calculés : rendement brut/net, mensualité, cash-flow, fiscalité et loyer d'équilibre ;
-- scénarios `LMNP réel`, `Micro-BIC`, `location nue` et `SCI à l'IS` ;
-- hypothèses de vacance, gestion, assurance, progression des loyers et valeur du bien ;
-- projection annuelle sur 20 ou 25 ans ;
-- exploration des projections par année, trois indicateurs et tableau accessible ;
-- génération à la demande d'un dossier d'investissement PDF de deux pages ;
+- analyseur d'annonces en 1 clic par URL (support démo instantané Leboncoin, SeLoger, PAP) ;
+- intelligence de marché DVF (data.gouv.fr) : prix médian au m² du quartier, écart de valorisation, marge de négociation et score de liquidité ;
+- comparateur fiscal multi-régimes (`LMNP réel`, `Micro-BIC`, `location nue`, `SCI à l'IS`) avec détection automatique du régime optimal ;
+- jauge de taux d'effort bancaire (règle HCSF des 35% d'endettement) ;
+- métriques financières institutionnelles : **TRI (Taux de Rentabilité Interne)** calculé par Newton-Raphson et **VAN (Valeur Actuelle Nette à 4%)** ;
+- projection patrimoniale annuelle sur 15, 20 ou 25 ans avec exploration interactive ;
+- génération à la demande d'un dossier bancaire PDF professionnel complet prêt pour le courtier ;
 - démonstration locale immédiatement exploitable grâce aux données d'exemple et à SQLite.
+
+## 🎯 Démo Recruteur en 3 minutes (Pitch & Démonstration)
+
+Pour présenter le projet lors d'un entretien technique ou produit :
+
+1. **Import en 1 clic d'une annonce réelle** : Cliquer sur *« Analyser une annonce »*, coller l'URL Leboncoin de test (`https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816`). Constater le préremplissage automatique des données (Maison 74 m² au Havre, 180 000 €, loyer estimé 950 €).
+2. **Intelligence de marché DVF** : Visualiser le widget DVF comparant le bien au prix médian notarié de la commune, avec l'écart en %, la marge de négociation suggérée et l'indice de liquidité.
+3. **Moteur fiscal & règle HCSF** : Observer le comparateur fiscal dynamique côte à côte avec le badge du régime le plus avantageux (`LMNP Réel` grâce à l'amortissement comptable) et la jauge d'endettement bancaire (HCSF 35%).
+4. **Métriques institutionnelles TRI & VAN** : Montrer les indicateurs institutionnels utilisés par les fonds d'investissement (TRI sur 20 ans avec sortie en plus-value et VAN actualisée à 4%).
+5. **Dossier bancaire PDF** : Cliquer sur *« Télécharger le dossier bancaire »* pour générer instantanément le PDF de synthèse financière.
+6. **Architecture & Tests** : Mentionner la stack moderne (Java 25, Spring Boot 4.1, Angular 22 Signals, Playwright E2E, suite Terraform 9 modules).
 
 Un [exemple de dossier PDF](output/pdf/dossier-investissement-exemple.pdf) est versionné pour permettre d'évaluer le rendu sans lancer l'application.
 

@@ -362,6 +362,11 @@ details[open] summary span { transform: rotate(45deg); }
 .result-grid div:last-child { border: 0; }
 .result-grid small, .projection-header small { display: block; color: var(--muted); font-size: 7px; text-transform: uppercase; letter-spacing: .08em; }
 .result-grid strong { display: block; margin-top: 6px; font-size: 12px; }
+.institutional-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.inst-pill { padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); display: flex; flex-direction: column; gap: 3px; }
+.inst-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.inst-val { font-size: 15px; font-weight: 850; color: var(--lime); &.negative { color: #f87171; } }
+.inst-sub { font-size: 8px; color: #62756d; }
 .projection-header { display: flex; justify-content: space-between; align-items: end; margin-top: 24px; }
 .projection-header strong { font-size: 11px; }
 .projection-header > span { color: var(--mint); font-size: 13px; font-weight: 850; }

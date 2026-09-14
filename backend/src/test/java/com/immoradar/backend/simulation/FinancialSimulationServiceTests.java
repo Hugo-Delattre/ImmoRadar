@@ -61,6 +61,16 @@ class FinancialSimulationServiceTests {
         assertThat(result.debtEffortRatio()).isPositive();
     }
 
+    @Test
+    void shouldCalculateInstitutionalIrrAndNpv() {
+        var result = simulationService.simulate(request(TaxRegime.REEL_LMNP, "3.5"));
+
+        assertThat(result.internalRateOfReturn()).isNotNull();
+        assertThat(result.internalRateOfReturn()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.netPresentValue()).isNotNull();
+        assertThat(result.netPresentValue()).isPositive();
+    }
+
     private SimulationRequest request(TaxRegime regime, String interestRate) {
         return new SimulationRequest(
                 "deal-1", amount("30000"), amount(interestRate), 20, regime,
