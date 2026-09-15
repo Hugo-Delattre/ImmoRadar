@@ -57,15 +57,59 @@ Le découpage par domaines (`deal`, `simulation`, `report`) garde les règles fi
 docker compose up --build
 ```
 
-- application : [http://localhost:4200](http://localhost:4200)
-- API : [http://localhost:8080/api/deals](http://localhost:8080/api/deals)
-- PostgreSQL : `localhost:5432`
+- Cockpit Web : [http://localhost:4200](http://localhost:4200)
+- API Backend : [http://localhost:8080/api/deals](http://localhost:8080/api/deals)
+- Base PostgreSQL : `localhost:5432`
+
+> **Note :** Aucune authentification n'est requise et la base de données est **automatiquement alimentée** au démarrage avec 5 opportunités réelles via le `DatabaseSeeder`.
 
 Pour arrêter l'ensemble :
 
 ```bash
 docker compose down
 ```
+
+## 🧪 Étapes pas à pas pour tester l'application
+
+Voici le parcours complet pour tester l'ensemble des fonctionnalités en 2 minutes :
+
+### Étape 1 : Découvrir le catalogue de biens (Recherche & Filtres)
+1. Ouvrez [http://localhost:4200](http://localhost:4200) dans votre navigateur.
+2. Les 5 biens pré-enregistrés s'affichent automatiquement (Saint-Étienne, Limoges, Mulhouse, Le Mans, Belfort).
+3. Testez les filtres réactifs dans la barre latérale :
+   - Ajustez le prix max ou le rendement minimum pour voir la pagination et le filtrage serveur JPA en action.
+   - Cliquez sur l'étoile ★ d'un bien pour le basculer en favori (persistance immédiate en base).
+
+### Étape 2 : Lancer un scan / extraire une annonce par URL
+1. Cliquez sur le bouton **« Analyser une annonce »** (en haut de la liste de biens).
+2. Une modale s'ouvre : collez l'URL d'une annonce réelle, par exemple :
+   ```
+   https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816
+   ```
+   *(ou cliquez sur l'un des boutons de raccourci démo Leboncoin, SeLoger, PAP)*.
+3. Cliquez sur **« Extraire »** : l'extracteur analyse l'URL et préremplit instantanément le formulaire (Maison 74 m² au Havre, 180 000 €, loyer estimé 950 €, photo).
+4. Cliquez sur **« Enregistrer et analyser »** : le bien est persisté en base de données et sélectionné automatiquement pour l'analyse.
+
+### Étape 3 : Vérifier l'intelligence de marché DVF (data.gouv.fr)
+1. Dans le volet droit de l'écran, consultez la section **« 01 Intelligence de marché DVF »**.
+2. Observez le comparatif avec les transactions notariées réelles des 5 dernières années dans le secteur :
+   - Prix DVF médian au m² et fourchette min/max.
+   - Écart en % vs le marché (+/-).
+   - Offre conseillée et marge de négociation recommandée.
+   - Indice de tension et score de liquidité.
+
+### Étape 4 : Ajuster le simulateur & observer le comparateur fiscal
+1. Dans la section **« 02 Studio de financement »**, modifiez l'apport avec les boutons rapides (`0% (Sans apport)`, `10%`, `15%`, `20%`).
+2. Observez la réactivité instantanée du serveur :
+   - **Cash-flow mensuel net** après charges, crédit et impôts.
+   - **Indicateurs institutionnels** : **TRI (IRR)** sur 20 ans avec sortie en plus-value et **VAN (NPV à 4%)**.
+   - **Jauge d'endettement HCSF** (alerte visuelle si le taux d'effort dépasse 35%).
+   - **Comparateur fiscal 4 régimes** (LMNP Réel, Micro-BIC, Location Nue, SCI à l'IS) indiquant le régime fiscal optimal avec le badge vert **« Recommandé »**.
+3. Dans la courbe patrimoniale, survolez ou cliquez sur les années (1, 5, 10, 15, 20 ans) pour visualiser l'amortissement du capital vs enrichissement net.
+
+### Étape 5 : Télécharger le dossier bancaire PDF
+1. Cliquez sur le bouton vert **« Télécharger le dossier bancaire »** (en haut à droite ou en bas du simulateur).
+2. Le backend génère et télécharge immédiatement un document PDF professionnel de 2 pages prêt pour un courtier ou une banque (synthèse de l'opération, plan de financement, frais de notaire, ratio HCSF, tableau d'amortissement et métriques TRI/VAN).
 
 ## Développement local
 
