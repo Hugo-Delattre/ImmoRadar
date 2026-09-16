@@ -271,21 +271,10 @@
                 <div class="result-grid">
                   <div><small>Mensualité</small><strong>{{ formatCurrency(result.monthlyMortgage) }}</strong></div>
                   <div><small>Rendement net</small><strong>{{ result.netYield }}%</strong></div>
+                  <div><small>TRI ({{ simulationForm.loanTermYears() }} ans)</small><strong class="highlight-metric">{{ result.internalRateOfReturn ?? 0 }}%</strong></div>
+                  <div><small>VAN (à 4%)</small><strong class="highlight-metric" [class.negative]="(result.netPresentValue ?? 0) < 0">{{ formatSignedCurrency(result.netPresentValue ?? 0) }}</strong></div>
                   <div><small>Impôts estimés</small><strong>{{ formatCurrency(result.taxAnnual) }}</strong></div>
                   <div><small>Loyer d’équilibre</small><strong>{{ formatCurrency(result.breakEvenRent) }}</strong></div>
-                </div>
-
-                <div class="institutional-kpis">
-                  <div class="inst-pill">
-                    <span class="inst-label">TRI (Taux de Rentabilité Interne)</span>
-                    <strong class="inst-val">{{ result.internalRateOfReturn ?? 0 }}%</strong>
-                    <span class="inst-sub">Sur {{ simulationForm.loanTermYears() }} ans avec revente</span>
-                  </div>
-                  <div class="inst-pill">
-                    <span class="inst-label">VAN (Valeur Actuelle Nette à 4%)</span>
-                    <strong class="inst-val" [class.negative]="(result.netPresentValue ?? 0) < 0">{{ formatSignedCurrency(result.netPresentValue ?? 0) }}</strong>
-                    <span class="inst-sub">Création de valeur nette actualisée</span>
-                  </div>
                 </div>
 
                 <app-projection-chart [projection]="result.projection" />
@@ -330,10 +319,18 @@
                             <div><small>Impôt</small><span>{{ formatCurrency(item.annualTax) }}<small>/an</small></span></div>
                             <div><small>Cash-flow</small><b [class.positive]="item.monthlyCashFlow >= 0" [class.negative]="item.monthlyCashFlow < 0">{{ formatSignedCurrency(item.monthlyCashFlow) }}</b></div>
                           </div>
-                          <p class="regime-adv">{{ item.advantage }}</p>
                         </button>
                       }
                     </div>
+
+                    @for (item of result.taxComparison; track item.regime) {
+                      @if (simulationForm().value().taxRegime === item.regime) {
+                        <div class="active-tax-insight">
+                          <span class="insight-dot"></span>
+                          <span>{{ item.advantage }}</span>
+                        </div>
+                      }
+                    }
                   </div>
                 }
 
