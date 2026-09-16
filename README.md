@@ -3,7 +3,7 @@
 [![Java 25](https://img.shields.io/badge/Java-25-orange.svg)](https://openjdk.org/)
 [![Spring Boot 4.1](https://img.shields.io/badge/Spring%20Boot-4.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Angular 22](https://img.shields.io/badge/Angular-22-red.svg)](https://angular.dev/)
-[![CI](https://github.com/Hugo-Delattre/ImmoManager/actions/workflows/ci.yml/badge.svg)](https://github.com/Hugo-Delattre/ImmoManager/actions/workflows/ci.yml)
+[![CI](https://github.com/Hugo-Delattre/ImmoRadar/actions/workflows/ci.yml/badge.svg)](https://github.com/Hugo-Delattre/ImmoRadar/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ImmoRadar est une application full-stack qui transforme une annonce immobilière en décision d'investissement : recherche multicritère, favoris, simulation de financement et de fiscalité, projection patrimoniale à long terme et dossier PDF partageable.
