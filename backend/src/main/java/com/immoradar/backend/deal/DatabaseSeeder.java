@@ -3,6 +3,8 @@ package com.immoradar.backend.deal;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import java.math.BigDecimal;
 
@@ -10,9 +12,13 @@ import java.math.BigDecimal;
 public class DatabaseSeeder implements CommandLineRunner {
 
     private final DealRepository dealRepository;
+    private final DealService dealService;
+    private final Clock clock;
 
-    public DatabaseSeeder(DealRepository dealRepository) {
+    public DatabaseSeeder(DealRepository dealRepository, DealService dealService, Clock clock) {
         this.dealRepository = dealRepository;
+        this.dealService = dealService;
+        this.clock = clock;
     }
 
     @Override
@@ -80,8 +86,30 @@ public class DatabaseSeeder implements CommandLineRunner {
                     false
                 )
             );
+            enrich(seedDeals);
             dealRepository.saveAll(seedDeals);
         }
+        // Les biens créés avant l'ajout du score détaillé sont recalculés à chaque démarrage.
+        dealService.rescoreAll();
+    }
+
+    /** Ajoute DPE, ancienneté et historique de prix aux biens de démonstration pour illustrer le radar. */
+    private void enrich(List<Deal> deals) {
+        var today = LocalDate.now(clock);
+        EnergyClass[] energy = {EnergyClass.D, EnergyClass.C, EnergyClass.E, EnergyClass.F, EnergyClass.D};
+        int[] daysOnline = {124, 18, 47, 210, 63};
+        for (int index = 0; index < deals.size(); index++) {
+            var deal = deals.get(index);
+            deal.setEnergyClass(energy[index]);
+            deal.setListedOn(today.minusDays(daysOnline[index]));
+            deal.setCreatedOn(today.minusDays(Math.min(daysOnline[index], 10)));
+            deal.setStatus(DealStatus.TO_REVIEW);
+        }
+        // Immeuble de Saint-Étienne : deux baisses de prix depuis sa mise en ligne
+        var building = deals.getFirst();
+        building.getPriceHistory().add(new PricePoint(today.minusDays(124), amount("269000")));
+        building.getPriceHistory().add(new PricePoint(today.minusDays(60), amount("255000")));
+        building.getPriceHistory().add(new PricePoint(today.minusDays(12), building.getPrice()));
     }
 
     private static BigDecimal amount(String value) {

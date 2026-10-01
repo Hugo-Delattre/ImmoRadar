@@ -11,7 +11,6 @@
     </a>
 
     <div class="topbar-actions">
-      <span class="live-badge"><i></i> Analyse active</span>
       <button class="primary-button" type="button" (click)="openCreateModal()">
         <span aria-hidden="true">＋</span> Ajouter un bien
       </button>
@@ -19,18 +18,12 @@
   </header>
 
   <main>
-    <section class="hero" aria-labelledby="page-title">
+    <section class="intro" aria-labelledby="page-title">
       <div>
-        <span class="eyebrow">Cockpit d’investissement locatif</span>
-        <h1 id="page-title">Décidez avec des chiffres,<br><em>pas avec une intuition.</em></h1>
-        <p>Centralisez vos opportunités, comparez leur potentiel et testez chaque financement en quelques secondes.</p>
+        <span class="eyebrow">Radar d’investissement locatif</span>
+        <h1 id="page-title">Repérez les biens <em>sous le prix du marché</em>.</h1>
       </div>
-      <div class="hero-proof" aria-label="Qualité de l’analyse">
-        <span>Du bien à la décision</span>
-        <strong>3<small> étapes</small></strong>
-        <p>Explorer · Simuler · Exporter</p>
-        <small>Hypothèses détaillées et ajustables</small>
-      </div>
+      <p>Chaque bien est noté sur 10 : décote face aux ventes réelles, rendement, cash-flow, levier de négociation et DPE.</p>
     </section>
 
     <section class="metrics-grid" aria-label="Indicateurs du portefeuille">
@@ -60,8 +53,14 @@
       <aside class="finder-panel" aria-label="Recherche d’opportunités">
         <div class="panel-heading">
           <div><span class="section-index">01</span><h2>Radar d’opportunités</h2></div>
-          <button class="text-button" type="button" (click)="resetFilters()">Réinitialiser</button>
         </div>
+
+        <nav class="status-tabs" aria-label="Étape du pipeline">
+          <button type="button" [class.active]="filterModel().status === ''" (click)="filterByStatus('')">En cours</button>
+          @for (status of statuses; track status.value) {
+            <button type="button" [class.active]="filterModel().status === status.value" (click)="filterByStatus(status.value)">{{ status.label }}</button>
+          }
+        </nav>
 
         <form class="filters" aria-label="Filtres de recherche">
           <label class="search-field full-field">
@@ -70,15 +69,31 @@
           </label>
           <label>
             <span>Budget maximal</span>
-            <div class="input-suffix"><input type="number" [formField]="filterForm.priceMax" /><b>€</b></div>
+            <div class="input-suffix"><input type="number" step="10000" [formField]="filterForm.priceMax" /><b>€</b></div>
           </label>
           <label>
-            <span>Rendement minimum</span>
+            <span>Rendement brut min.</span>
             <div class="input-suffix"><input type="number" step="0.5" [formField]="filterForm.yieldMin" /><b>%</b></div>
           </label>
           <label>
-            <span>Revenu avant crédit</span>
-            <div class="input-suffix"><input type="number" [formField]="filterForm.cashflowMin" /><b>€/m</b></div>
+            <span>Type de bien</span>
+            <select [formField]="filterForm.propertyType">
+              <option value="">Tous</option>
+              <option value="Studio">Studio</option>
+              <option value="Apartment">Appartement</option>
+              <option value="House">Maison</option>
+              <option value="Building">Immeuble</option>
+            </select>
+          </label>
+          <label>
+            <span>Trier par</span>
+            <select [formField]="filterForm.sort">
+              @for (option of sortOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+            </select>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" [formField]="filterForm.excludeEnergySieves" />
+            <span>Masquer les passoires F et G</span>
           </label>
           <button
             class="favorite-filter"
@@ -93,7 +108,7 @@
         <div class="results-heading">
           <strong>{{ totalDeals() }} bien{{ totalDeals() > 1 ? 's' : '' }}</strong>
           @if (dealsResource.isLoading()) { <span class="loading-label"><i></i> Actualisation</span> }
-          @else { <span>Triés par potentiel</span> }
+          @else { <button class="text-button" type="button" (click)="resetFilters()">Réinitialiser les filtres</button> }
         </div>
         @if (favoriteError()) { <p class="form-error" role="alert">{{ favoriteError() }}</p> }
 
@@ -110,31 +125,12 @@
         } @else {
           <div class="deal-list">
             @for (deal of deals(); track deal.id) {
-              <article class="deal-card-wrap" [class.selected]="selectedDeal()?.id === deal.id">
-                <button class="deal-card" type="button" (click)="selectDeal(deal.id)" [attr.aria-pressed]="selectedDeal()?.id === deal.id">
-                  <img [src]="deal.imageUrl" [alt]="deal.title" />
-                  <span class="deal-content">
-                    <span class="deal-topline">
-                      <span class="type-pill">{{ propertyTypeLabel(deal.propertyType) }}</span>
-                      <span class="score-pill">{{ deal.opportunityScore }}</span>
-                    </span>
-                    <strong>{{ deal.title }}</strong>
-                    <small class="location">⌖ {{ deal.location }} · {{ deal.surface }} m²</small>
-                    <span class="deal-numbers">
-                      <b>{{ formatCurrency(deal.price) }}</b>
-                      <span><strong>{{ deal.grossYield }}%</strong><small>brut</small></span>
-                      <span><strong>{{ formatSignedCurrency(deal.monthlyOperatingIncome) }}</strong><small>avant crédit</small></span>
-                    </span>
-                  </span>
-                </button>
-                <button
-                  class="favorite-button"
-                  [class.active]="deal.favorite"
-                  [disabled]="favoritePendingId() !== null"
-                  type="button"
-                  (click)="toggleFavorite($event, deal)"
-                  [attr.aria-label]="deal.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'">♥</button>
-              </article>
+              <app-deal-card
+                [deal]="deal"
+                [selected]="selectedDeal()?.id === deal.id"
+                [favoriteDisabled]="favoritePendingId() !== null"
+                (selectDeal)="selectDeal($event)"
+                (toggleFavorite)="toggleFavorite($event, deal)" />
             } @empty {
               <div class="state-card">
                 <span>Aucun signal détecté</span>
@@ -156,15 +152,56 @@
       <section class="analysis-panel" aria-label="Analyse du bien sélectionné">
         @if (selectedDeal(); as deal) {
           <div class="property-hero">
-            <img [src]="deal.imageUrl" [alt]="deal.title" />
+            <img appImageFallback [src]="deal.imageUrl" alt="" />
             <div class="property-overlay"></div>
             <div class="property-copy">
-              <div class="property-badges"><span>{{ propertyTypeLabel(deal.propertyType) }}</span><span>{{ deal.surface }} m²</span><span class="high-score">Radar score {{ deal.opportunityScore }}</span></div>
+              <div class="property-badges"><span>{{ propertyTypeLabel(deal.propertyType) }}</span><span>{{ deal.surface }} m²</span>@if (deal.energyClass) { <span>DPE {{ deal.energyClass }}</span> }<span class="high-score">Radar score {{ deal.opportunityScore }}</span></div>
               <h2>{{ deal.title }}</h2>
               <p>⌖ {{ deal.location }}</p>
             </div>
             <div class="property-price"><small>Prix affiché</small><strong>{{ formatCurrency(deal.price) }}</strong><span>{{ formatCurrency(deal.pricePerSquareMeter) }}/m²</span></div>
           </div>
+
+          <div class="deal-actions">
+            <label class="status-select">
+              <span>Étape</span>
+              <select [value]="deal.status" [disabled]="statusPending()" (change)="changeStatus(deal, $any($event.target).value)">
+                @for (status of statuses; track status.value) { <option [value]="status.value">{{ status.label }}</option> }
+              </select>
+            </label>
+            <div class="action-buttons">
+              @if (deal.sourceUrl) { <a class="secondary-button" [href]="deal.sourceUrl" target="_blank" rel="noopener noreferrer">Voir l’annonce ↗</a> }
+              <button class="secondary-button" type="button" (click)="openEditModal(deal)">Modifier</button>
+              <button class="secondary-button" type="button" (click)="copyDealLink()">Copier le lien</button>
+              <button class="secondary-button danger" type="button" (click)="deleteDeal(deal)">Supprimer</button>
+            </div>
+          </div>
+          @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
+
+          @if (deal.alerts.length > 0) {
+            <ul class="deal-alerts" aria-label="Points de vigilance">
+              @for (alert of deal.alerts; track alert) { <li>{{ alert }}</li> }
+            </ul>
+          }
+
+          <app-score-breakdown [factors]="deal.scoreBreakdown" [score]="deal.opportunityScore" />
+
+          @if (deal.priceHistory.length > 1 || deal.daysOnMarket !== null) {
+            <section class="price-history" aria-label="Historique du prix">
+              <span class="eyebrow">Historique du prix</span>
+              <p>
+                @if (deal.daysOnMarket !== null) { En ligne depuis <strong>{{ deal.daysOnMarket }} jours</strong>. }
+                @if (deal.priceDropPercent > 0) { Prix déjà baissé de <strong>{{ deal.priceDropPercent }} %</strong> : le vendeur est probablement prêt à négocier. }
+              </p>
+              @if (deal.priceHistory.length > 1) {
+                <ol>
+                  @for (point of deal.priceHistory; track point.observedOn + point.price) {
+                    <li><span>{{ formatDate(point.observedOn) }}</span><strong>{{ formatCurrency(point.price) }}</strong></li>
+                  }
+                </ol>
+              }
+            </section>
+          }
 
           <div class="snapshot-grid">
             <article><small>Loyer mensuel</small><strong>{{ formatCurrency(deal.monthlyRent) }}</strong><span>Revenu cible</span></article>
@@ -275,7 +312,7 @@
                 <div class="result-grid">
                   <div><small>Mensualité{{ result.monthlyLoanInsurance ? ' + assurance' : '' }}</small><strong>{{ formatCurrency(result.monthlyMortgage + (result.monthlyLoanInsurance ?? 0)) }}</strong></div>
                   <div><small>Rendement net</small><strong>{{ result.netYield }}%</strong></div>
-                  <div><small>TRI ({{ simulationForm.loanTermYears() }} ans)</small><strong class="highlight-metric">{{ result.internalRateOfReturn ?? 0 }}%</strong></div>
+                  <div><small>TRI ({{ simulationModel().loanTermYears }} ans)</small><strong class="highlight-metric">{{ result.internalRateOfReturn ?? 0 }}%</strong></div>
                   <div><small>VAN (à 4%)</small><strong class="highlight-metric" [class.negative]="(result.netPresentValue ?? 0) < 0">{{ formatSignedCurrency(result.netPresentValue ?? 0) }}</strong></div>
                   <div><small>Impôts estimés</small><strong>{{ formatCurrency(result.taxAnnual) }}</strong></div>
                   <div><small>Loyer d’équilibre</small><strong>{{ formatCurrency(result.breakEvenRent) }}</strong></div>
@@ -368,8 +405,9 @@
   @if (isCreateModalOpen()) {
     <div class="modal-backdrop" role="presentation" (click)="closeModalFromBackdrop($event)" (keydown.escape)="closeCreateModal()">
       <section class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
-        <header><div><span class="eyebrow">Nouvelle analyse</span><h2 id="create-title">Ajouter une opportunité</h2><p>Renseigne les chiffres de l’annonce. Tu pourras affiner le financement ensuite.</p></div><button type="button" (click)="closeCreateModal()" aria-label="Fermer">×</button></header>
+        <header><div><span class="eyebrow">{{ editingDealId() ? 'Mise à jour' : 'Nouvelle analyse' }}</span><h2 id="create-title">{{ editingDealId() ? 'Modifier le bien' : 'Ajouter une opportunité' }}</h2><p>{{ editingDealId() ? 'Un nouveau prix est ajouté à l’historique : une baisse augmente le levier de négociation.' : 'Renseigne les chiffres de l’annonce. Tu pourras affiner le financement ensuite.' }}</p></div><button type="button" (click)="closeCreateModal()" aria-label="Fermer">×</button></header>
 
+        @if (!editingDealId()) {
         <section class="url-import-card" aria-label="Importation rapide d’annonce par URL">
           <div class="url-import-header">
             <div>
@@ -381,6 +419,7 @@
           <div class="url-input-wrap">
             <input
               type="url"
+              aria-label="URL de l’annonce à importer"
               [value]="importUrl()"
               (input)="importUrl.set($any($event.target).value)"
               placeholder="Ex. https://www.leboncoin.fr/ad/ventes_immobilieres/..."
@@ -411,6 +450,7 @@
             </ul>
           }
         </section>
+        }
 
         <form (submit)="submitCreateDeal(); $event.preventDefault()">
           @if (submitError()) { <div class="form-error" role="alert">{{ submitError() }}</div> }
@@ -423,9 +463,12 @@
           <label><span>Charges mensuelles</span><div class="input-suffix"><input type="number" [formField]="newDealForm.monthlyCharges" /><b>€</b></div></label>
           <label><span>Taxe foncière annuelle</span><div class="input-suffix"><input type="number" [formField]="newDealForm.propertyTax" /><b>€</b></div></label>
           <label><span>Budget travaux</span><div class="input-suffix"><input type="number" [formField]="newDealForm.renovationCost" /><b>€</b></div></label>
+          <label><span>DPE (classe énergie)</span><select [formField]="newDealForm.energyClass"><option value="">Non renseigné</option>@for (energy of energyClasses; track energy) { <option [value]="energy">{{ energy }}</option> }</select></label>
+          <label><span>Mise en ligne de l’annonce</span><input type="date" [formField]="newDealForm.listedOn" />@if (submitFieldErrors()['listedOn']; as error) { <small class="field-error">{{ error }}</small> }</label>
+          <label class="full-field"><span>Lien de l’annonce</span><input type="url" [formField]="newDealForm.sourceUrl" placeholder="https://www.leboncoin.fr/…" />@if (submitFieldErrors()['sourceUrl']; as error) { <small class="field-error">{{ error }}</small> }</label>
           <label><span>URL de la photo</span><input type="url" [formField]="newDealForm.imageUrl" placeholder="https://…" /></label>
           <label class="full-field"><span>Note d’analyse</span><textarea rows="3" [formField]="newDealForm.description" placeholder="Atouts, points de vigilance, stratégie locative…"></textarea></label>
-          <footer><button class="secondary-button" type="button" (click)="closeCreateModal()">Annuler</button><button class="primary-button" type="submit" [disabled]="isSubmitting()">{{ isSubmitting() ? 'Analyse en cours…' : 'Créer l’analyse' }}</button></footer>
+          <footer><button class="secondary-button" type="button" (click)="closeCreateModal()">Annuler</button><button class="primary-button" type="submit" [disabled]="isSubmitting()">{{ isSubmitting() ? 'Enregistrement…' : editingDealId() ? 'Enregistrer' : 'Créer l’analyse' }}</button></footer>
         </form>
       </section>
     </div>

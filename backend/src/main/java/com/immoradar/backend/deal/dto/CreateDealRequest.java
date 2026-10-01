@@ -1,12 +1,18 @@
 package com.immoradar.backend.deal.dto;
 
+import com.immoradar.backend.deal.EnergyClass;
 import com.immoradar.backend.deal.PropertyType;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * DTO Java 25 Record pour la création d'un deal avec validation déclarative Jakarta.
@@ -39,7 +45,23 @@ public record CreateDealRequest(
     @NotNull(message = "Le type de bien (Studio, Appartement, Immeuble, Maison) est obligatoire")
     PropertyType propertyType,
 
-    String description,
+    @Nullable String description,
 
-    String imageUrl
-) {}
+    @Nullable String imageUrl,
+
+    @Nullable EnergyClass energyClass,
+
+    @Nullable @Size(max = 1000) @Pattern(regexp = "^https?://.*", message = "Le lien de l'annonce doit commencer par http:// ou https://")
+    String sourceUrl,
+
+    @Nullable @PastOrPresent(message = "La date de mise en ligne ne peut pas être dans le futur")
+    LocalDate listedOn
+) {
+    public CreateDealRequest(
+            String title, BigDecimal price, BigDecimal monthlyRent, BigDecimal monthlyCharges, BigDecimal propertyTax,
+            BigDecimal renovationCost, String location, BigDecimal surface, PropertyType propertyType,
+            @Nullable String description, @Nullable String imageUrl) {
+        this(title, price, monthlyRent, monthlyCharges, propertyTax, renovationCost, location, surface, propertyType,
+                description, imageUrl, null, null, null);
+    }
+}

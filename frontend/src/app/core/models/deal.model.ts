@@ -1,5 +1,21 @@
 export type PropertyType = 'Studio' | 'Apartment' | 'Building' | 'House';
 export type TaxRegime = 'REEL_LMNP' | 'MICRO_BIC' | 'NU' | 'SCI_IS';
+export type EnergyClass = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
+export type DealStatus = 'TO_REVIEW' | 'TO_VISIT' | 'OFFER_MADE' | 'ACQUIRED' | 'REJECTED';
+export type DealSort = 'SCORE' | 'YIELD' | 'MARKET_DISCOUNT' | 'PRICE_DROP' | 'PRICE_ASC' | 'PRICE_M2_ASC' | 'NEWEST';
+
+export interface ScoreFactor {
+  key: 'market' | 'yield' | 'cashflow' | 'negotiation' | 'energy';
+  label: string;
+  points: number;
+  maxPoints: number;
+  detail: string;
+}
+
+export interface PricePoint {
+  observedOn: string;
+  price: number;
+}
 
 export interface Deal {
   id: string;
@@ -19,6 +35,17 @@ export interface Deal {
   grossYield: number;
   monthlyOperatingIncome: number;
   pricePerSquareMeter: number;
+  status: DealStatus;
+  energyClass: EnergyClass | null;
+  sourceUrl: string | null;
+  listedOn: string | null;
+  daysOnMarket: number | null;
+  priceDropPercent: number;
+  marketDeltaPercent: number | null;
+  referenceMonthlyCashFlow: number;
+  priceHistory: PricePoint[];
+  scoreBreakdown: ScoreFactor[];
+  alerts: string[];
 }
 
 export interface DealSearchResponse {
@@ -35,6 +62,10 @@ export interface DealFilters {
   cashflowMin: number;
   location: string;
   favoritesOnly: boolean;
+  propertyType: PropertyType | '';
+  excludeEnergySieves: boolean;
+  status: DealStatus | '';
+  sort: DealSort;
 }
 
 export interface SimulationRequest {
@@ -124,6 +155,9 @@ export interface CreateDealRequest {
   propertyType: PropertyType;
   description: string;
   imageUrl: string;
+  energyClass: EnergyClass | null;
+  sourceUrl: string | null;
+  listedOn: string | null;
 }
 
 export interface ProblemDetail {

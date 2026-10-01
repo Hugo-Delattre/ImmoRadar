@@ -1,31 +1,20 @@
 package com.immoradar.backend.market;
 
-import com.immoradar.backend.deal.Deal;
-import com.immoradar.backend.deal.DealService;
-import com.immoradar.backend.deal.PropertyType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class DvfMarketServiceTests {
-
-    @Mock
-    private DealService dealService;
 
     private DvfMarketService dvfMarketService;
 
     @BeforeEach
     void setUp() {
-        dvfMarketService = new DvfMarketService(dealService);
+        dvfMarketService = new DvfMarketService();
     }
 
     @Test
@@ -33,15 +22,8 @@ class DvfMarketServiceTests {
     void shouldIdentifyUndervaluedDeal() {
         // Saint-Étienne (médiane DVF : 1450 €/m²)
         // Bien à 100 000 € pour 100 m² = 1000 €/m² (-31%)
-        Deal deal = new Deal(
-                "deal-1", "Appartement Saint-Étienne",
-                new BigDecimal("100000"), new BigDecimal("900"), new BigDecimal("80"),
-                new BigDecimal("700"), new BigDecimal("5000"), "Saint-Étienne (42)",
-                new BigDecimal("100"), PropertyType.APARTMENT, "Beau T4", 9.0, "", false
-        );
-        when(dealService.getEntity("deal-1")).thenReturn(deal);
-
-        DvfMarketAnalysis analysis = dvfMarketService.analyzeDeal("deal-1");
+        DvfMarketAnalysis analysis = dvfMarketService.analyze(
+                "Saint-Étienne (42)", new BigDecimal("100000"), new BigDecimal("100"));
 
         assertThat(analysis.marketStatus()).isEqualTo("SOUS_EVALUE");
         assertThat(analysis.dvfMedianPricePerSquareMeter()).isEqualByComparingTo("1450");

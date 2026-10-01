@@ -4,6 +4,7 @@ import com.immoradar.backend.deal.dto.CreateDealRequest;
 import com.immoradar.backend.deal.dto.DealResponse;
 import com.immoradar.backend.deal.dto.DealSearchResponse;
 import com.immoradar.backend.deal.dto.FavoriteRequest;
+import com.immoradar.backend.deal.dto.StatusRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -34,9 +35,21 @@ public class DealController {
             @RequestParam(required = false) @Nullable BigDecimal cashflowMin,
             @RequestParam(required = false) @Nullable String location,
             @RequestParam(defaultValue = "false") boolean favoritesOnly,
+            @RequestParam(required = false) @Nullable String propertyType,
+            @RequestParam(defaultValue = "false") boolean excludeEnergySieves,
+            @RequestParam(required = false) @Nullable DealStatus status,
+            @RequestParam(defaultValue = "SCORE") DealSort sort,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "24") @Min(1) @Max(100) int size) {
-        return dealService.search(priceMax, yieldMin, cashflowMin, location, favoritesOnly, page, size);
+        var type = propertyType == null || propertyType.isBlank() ? null : PropertyType.fromValue(propertyType);
+        var criteria = new DealSearchCriteria(
+                priceMax, yieldMin, cashflowMin, location, favoritesOnly, type, excludeEnergySieves, status, sort);
+        return dealService.search(criteria, page, size);
+    }
+
+    @GetMapping("/{dealId}")
+    public DealResponse get(@PathVariable String dealId) {
+        return dealService.get(dealId);
     }
 
     @PostMapping
@@ -44,8 +57,24 @@ public class DealController {
         return ResponseEntity.status(HttpStatus.CREATED).body(dealService.create(request));
     }
 
+    @PutMapping("/{dealId}")
+    public DealResponse update(@PathVariable String dealId, @RequestBody @Valid CreateDealRequest request) {
+        return dealService.update(dealId, request);
+    }
+
     @PatchMapping("/{dealId}/favorite")
     public DealResponse setFavorite(@PathVariable String dealId, @RequestBody FavoriteRequest request) {
         return dealService.setFavorite(dealId, request.favorite());
+    }
+
+    @PatchMapping("/{dealId}/status")
+    public DealResponse setStatus(@PathVariable String dealId, @RequestBody @Valid StatusRequest request) {
+        return dealService.setStatus(dealId, request.status());
+    }
+
+    @DeleteMapping("/{dealId}")
+    public ResponseEntity<Void> delete(@PathVariable String dealId) {
+        dealService.delete(dealId);
+        return ResponseEntity.noContent().build();
     }
 }

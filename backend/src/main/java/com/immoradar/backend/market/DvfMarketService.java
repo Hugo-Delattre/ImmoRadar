@@ -1,7 +1,5 @@
 package com.immoradar.backend.market;
 
-import com.immoradar.backend.deal.Deal;
-import com.immoradar.backend.deal.DealService;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -17,7 +15,6 @@ import java.util.Map;
 public class DvfMarketService {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
-    private final DealService dealService;
 
     // Référentiel notarié DVF officiel par zone (prix m² médian, min, max, transactions 5 ans, liquidité, délai de vente)
     private record DvfBenchmark(
@@ -46,14 +43,9 @@ public class DvfMarketService {
             new BigDecimal("2100"), new BigDecimal("1600"), new BigDecimal("2800"), 2500, "B", 70
     );
 
-    public DvfMarketService(DealService dealService) {
-        this.dealService = dealService;
-    }
-
-    public DvfMarketAnalysis analyzeDeal(String dealId) {
-        Deal deal = dealService.getEntity(dealId);
-        BigDecimal pricePerM2 = deal.getPrice().divide(deal.getSurface(), 0, RoundingMode.HALF_UP);
-        return analyze(deal.getLocation(), pricePerM2, deal.getPrice(), deal.getSurface());
+    public DvfMarketAnalysis analyze(String location, BigDecimal totalPrice, BigDecimal surface) {
+        BigDecimal pricePerM2 = totalPrice.divide(surface, 0, RoundingMode.HALF_UP);
+        return analyze(location, pricePerM2, totalPrice, surface);
     }
 
     public DvfMarketAnalysis analyze(String location, BigDecimal pricePerSquareMeter, BigDecimal totalPrice, BigDecimal surface) {
