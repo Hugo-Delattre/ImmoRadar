@@ -709,7 +709,17 @@ details[open] summary span { transform: rotate(45deg); }
     font-size: 9px;
     font-weight: 800;
   }
+
+  .url-warnings {
+    margin: 0;
+    padding-left: 16px;
+    color: #ffd08a;
+    font-size: 9px;
+    line-height: 1.5;
+  }
 }
+
+.debt-ratio-missing { margin: 14px 0 0; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 10px; }
 
 .result-footer { display: flex; justify-content: space-between; margin-top: 17px; color: var(--muted); font-size: 9px; }
 .result-footer strong { color: var(--text); }

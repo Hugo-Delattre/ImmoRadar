@@ -245,6 +245,9 @@
               </div>
               <label><span>Taux nominal</span><div class="input-suffix"><input type="number" step="0.1" [formField]="simulationForm.interestRate" /><b>%</b></div></label>
               <label><span>Durée</span><div class="input-suffix"><select [formField]="simulationForm.loanTermYears"><option value="15">15 ans</option><option value="20">20 ans</option><option value="25">25 ans</option></select><b>⌄</b></div></label>
+              <div class="form-section-title"><span>Votre foyer</span><small>Pour le taux d’effort bancaire</small></div>
+              <label><span>Revenus nets du foyer</span><div class="input-suffix"><input type="number" [formField]="simulationForm.monthlyNetIncome" /><b>€/m</b></div></label>
+              <label><span>Crédits en cours</span><div class="input-suffix"><input type="number" [formField]="simulationForm.existingMonthlyDebt" /><b>€/m</b></div></label>
               <label class="full-field"><span>Régime fiscal</span><select [formField]="simulationForm.taxRegime"><option value="REEL_LMNP">LMNP · régime réel</option><option value="MICRO_BIC">LMNP · micro-BIC</option><option value="NU">Location nue · micro-foncier</option><option value="SCI_IS">SCI à l’IS</option></select></label>
 
               <details>
@@ -253,7 +256,8 @@
                   <label><span>Tranche marginale</span><div class="input-suffix"><input type="number" [formField]="simulationForm.marginalTaxRate" /><b>%</b></div></label>
                   <label><span>Vacance locative</span><div class="input-suffix"><input type="number" step="0.5" [formField]="simulationForm.vacancyRate" /><b>%</b></div></label>
                   <label><span>Gestion locative</span><div class="input-suffix"><input type="number" step="0.5" [formField]="simulationForm.managementRate" /><b>%</b></div></label>
-                  <label><span>Assurance annuelle</span><div class="input-suffix"><input type="number" [formField]="simulationForm.insuranceAnnual" /><b>€</b></div></label>
+                  <label><span>Assurance emprunteur</span><div class="input-suffix"><input type="number" step="0.05" [formField]="simulationForm.loanInsuranceRate" /><b>%/an</b></div></label>
+                  <label><span>Assurance PNO annuelle</span><div class="input-suffix"><input type="number" [formField]="simulationForm.insuranceAnnual" /><b>€</b></div></label>
                   <label><span>Progression loyers</span><div class="input-suffix"><input type="number" step="0.1" [formField]="simulationForm.rentGrowthRate" /><b>%</b></div></label>
                   <label><span>Progression du bien</span><div class="input-suffix"><input type="number" step="0.1" [formField]="simulationForm.propertyGrowthRate" /><b>%</b></div></label>
                 </div>
@@ -269,7 +273,7 @@
                 <p class="result-explainer">Après crédit, charges, vacance et fiscalité estimée.</p>
 
                 <div class="result-grid">
-                  <div><small>Mensualité</small><strong>{{ formatCurrency(result.monthlyMortgage) }}</strong></div>
+                  <div><small>Mensualité{{ result.monthlyLoanInsurance ? ' + assurance' : '' }}</small><strong>{{ formatCurrency(result.monthlyMortgage + (result.monthlyLoanInsurance ?? 0)) }}</strong></div>
                   <div><small>Rendement net</small><strong>{{ result.netYield }}%</strong></div>
                   <div><small>TRI ({{ simulationForm.loanTermYears() }} ans)</small><strong class="highlight-metric">{{ result.internalRateOfReturn ?? 0 }}%</strong></div>
                   <div><small>VAN (à 4%)</small><strong class="highlight-metric" [class.negative]="(result.netPresentValue ?? 0) < 0">{{ formatSignedCurrency(result.netPresentValue ?? 0) }}</strong></div>
@@ -279,17 +283,21 @@
 
                 <app-projection-chart [projection]="result.projection" />
 
-                <div class="debt-ratio-bar" [class.warning]="(result.debtEffortRatio ?? 0) > 35">
-                  <div class="debt-info">
-                    <span>Taux d’effort bancaire indicatif (HCSF)</span>
-                    <strong>{{ result.debtEffortRatio ?? 0 }}%</strong>
+                @if (result.debtEffortRatio != null) {
+                  <div class="debt-ratio-bar" [class.warning]="result.debtEffortRatio > 35">
+                    <div class="debt-info">
+                      <span>Taux d’effort bancaire (règle HCSF)</span>
+                      <strong>{{ result.debtEffortRatio }}%</strong>
+                    </div>
+                    <div class="debt-track">
+                      <div class="debt-fill" [style.width.%]="Math.min(100, result.debtEffortRatio)" [class.danger]="result.debtEffortRatio > 35"></div>
+                      <div class="hcsf-limit-marker" title="Plafond HCSF : 35 %"><span>35%</span></div>
+                    </div>
+                    <small>{{ result.debtEffortRatio <= 35 ? '✓ Sous le plafond HCSF de 35 % (crédits et assurance rapportés à vos revenus + 70 % du loyer).' : '⚠️ Au-dessus du plafond HCSF de 35 % : augmente l’apport, allonge la durée ou solde un crédit en cours.' }}</small>
                   </div>
-                  <div class="debt-track">
-                    <div class="debt-fill" [style.width.%]="Math.min(100, (result.debtEffortRatio ?? 0))" [class.danger]="(result.debtEffortRatio ?? 0) > 35"></div>
-                    <div class="hcsf-limit-marker" title="Plafond HCSF légal : 35%"><span>35%</span></div>
-                  </div>
-                  <small>{{ (result.debtEffortRatio ?? 0) <= 35 ? '✓ Conforme au seuil maximal d’endettement de 35% recommandé par le HCSF.' : '⚠️ Dépassement du seuil HCSF de 35% : un apport supérieur ou un allongement de durée est conseillé.' }}</small>
-                </div>
+                } @else {
+                  <p class="debt-ratio-missing">Renseigne les revenus nets du foyer pour calculer le taux d’effort bancaire.</p>
+                }
 
                 @if (result.taxComparison && result.taxComparison.length > 0) {
                   <div class="tax-comparison-card">
@@ -396,6 +404,11 @@
           }
           @if (extractSuccessMessage()) {
             <p class="url-success" role="status">{{ extractSuccessMessage() }}</p>
+          }
+          @if (extractWarnings().length > 0) {
+            <ul class="url-warnings" aria-label="Points à vérifier">
+              @for (warning of extractWarnings(); track warning) { <li>{{ warning }}</li> }
+            </ul>
           }
         </section>
 

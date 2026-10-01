@@ -124,7 +124,9 @@ public class InvestmentReportService {
         addRow(table, "Travaux prévus", currency(deal.getRenovationCost()));
         addRow(table, "Apport personnel", currency(request.downpayment()));
         addRow(table, "Taux nominal / durée", request.interestRate() + " % / " + request.loanTermYears() + " ans");
-        addRow(table, "Taux d'effort bancaire (HCSF)", simulation.debtEffortRatio() + " % (max 35%)");
+        addRow(table, "Taux d'effort bancaire (HCSF)", simulation.debtEffortRatio() == null
+                ? "Non calculé (revenus du foyer non renseignés)"
+                : simulation.debtEffortRatio() + " % (max 35%)");
         addRow(table, "Régime fiscal sélectionné", request.taxRegime().name().replace('_', ' '));
         addRow(table, "Vacance / gestion d'agence", request.vacancyRate() + " % / " + request.managementRate() + " %");
         addRow(table, "Charges d'exploitation annuelles", currency(simulation.annualOperatingExpenses()));

@@ -49,6 +49,9 @@ export interface SimulationRequest {
   insuranceAnnual: number;
   rentGrowthRate: number;
   propertyGrowthRate: number;
+  monthlyNetIncome: number | null;
+  existingMonthlyDebt: number;
+  loanInsuranceRate: number;
 }
 
 export interface ProjectionPoint {
@@ -70,20 +73,24 @@ export interface TaxComparisonItem {
   advantage: string;
 }
 
+/** Champs lus dans l'annonce ; un champ absent reste null et doit être saisi à la main. */
 export interface ListingExtractResult {
-  title: string;
-  price: number;
-  monthlyRent: number;
-  surface: number;
-  location: string;
-  propertyType: PropertyType;
-  renovationCost: number;
-  monthlyCharges: number;
-  propertyTax: number;
-  imageUrl: string;
-  description: string;
+  title: string | null;
+  price: number | null;
+  monthlyRent: number | null;
+  surface: number | null;
+  location: string | null;
+  propertyType: PropertyType | null;
+  renovationCost: number | null;
+  monthlyCharges: number | null;
+  propertyTax: number | null;
+  imageUrl: string | null;
+  description: string | null;
   sourceUrl: string;
   platform: string;
+  extractedFields: string[];
+  warnings: string[];
+  demo: boolean;
 }
 
 export interface SimulationResult {
@@ -99,9 +106,10 @@ export interface SimulationResult {
   cashFlowStatus: 'POSITIF' | 'EQUILIBRE' | 'A_OPTIMISER';
   projection: ProjectionPoint[];
   taxComparison?: TaxComparisonItem[];
-  debtEffortRatio?: number;
+  debtEffortRatio?: number | null;
   internalRateOfReturn?: number;
   netPresentValue?: number;
+  monthlyLoanInsurance?: number;
 }
 
 export interface CreateDealRequest {

@@ -69,6 +69,9 @@ test.beforeEach(async ({ page }) => {
       description: 'Maison 3 pièces 74 m² avec 2 chambres, terrasse de 40 m² et garage.',
       sourceUrl: 'https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816',
       platform: 'Leboncoin',
+      extractedFields: ['title', 'price', 'monthlyRent', 'surface', 'location'],
+      warnings: ['Annonce de démonstration : les chiffres sont fictifs.'],
+      demo: true,
     } });
   });
 });
@@ -122,7 +125,7 @@ test('displays DVF market intelligence and negotiation recommendation', async ({
 
 test('displays multi-regime tax comparison and debt effort alert', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Taux d’effort bancaire indicatif (HCSF)')).toBeVisible();
+  await expect(page.getByText('Taux d’effort bancaire (règle HCSF)')).toBeVisible();
   await expect(page.getByText('28.5%')).toBeVisible();
   await expect(page.getByText('Comparatif multi-régimes en temps réel')).toBeVisible();
   await expect(page.getByText('LMNP Réel')).toBeVisible();
@@ -134,9 +137,27 @@ test('extracts listing via URL in 1 click and populates creation form', async ({
   await page.getByRole('button', { name: 'Ajouter un bien' }).click();
   await expect(page.getByText('Importer directement depuis une annonce')).toBeVisible();
   await page.getByRole('button', { name: 'Leboncoin · Maison Le Havre' }).click();
-  await expect(page.getByText('Annonce importée avec succès (Leboncoin)')).toBeVisible();
+  await expect(page.getByText('5 champs lus sur Leboncoin (démo).')).toBeVisible();
+  await expect(page.getByText('Annonce de démonstration : les chiffres sont fictifs.')).toBeVisible();
   await expect(page.getByPlaceholder('Ex. T3 lumineux proche gare')).toHaveValue('Maison 3 pièces 74 m²');
   await expect(page.getByPlaceholder('Ex. Angers (49)')).toHaveValue('Le Havre (76600)');
 });
 
-
+test('keeps manual values and lists what to check when a listing cannot be read', async ({ page }) => {
+  await page.route('**/api/listings/extract', route => route.fulfill({ json: {
+    title: null, price: null, monthlyRent: null, surface: null, location: 'Saint-Etienne (42000)',
+    propertyType: 'Apartment', renovationCost: null, monthlyCharges: null, propertyTax: null,
+    imageUrl: null, description: null, sourceUrl: 'https://www.pap.fr/annonces/appartement-saint-etienne-42000-r1',
+    platform: 'PAP', extractedFields: ['location', 'propertyType'],
+    warnings: ['Prix non trouvé : saisis-le depuis l’annonce.'], demo: false,
+  } }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Ajouter un bien' }).click();
+  await page.getByPlaceholder('Ex. T3 lumineux proche gare').fill('Mon T2');
+  await page.getByPlaceholder(/leboncoin/).fill('https://www.pap.fr/annonces/appartement-saint-etienne-42000-r1');
+  await page.getByRole('button', { name: 'Analyser l’annonce' }).click();
+  await expect(page.getByText('2 champs lus sur PAP.')).toBeVisible();
+  await expect(page.getByText('Prix non trouvé : saisis-le depuis l’annonce.')).toBeVisible();
+  await expect(page.getByPlaceholder('Ex. T3 lumineux proche gare')).toHaveValue('Mon T2');
+  await expect(page.getByPlaceholder('Ex. Angers (49)')).toHaveValue('Saint-Etienne (42000)');
+});

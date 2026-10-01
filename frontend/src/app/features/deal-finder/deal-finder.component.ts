@@ -44,6 +44,7 @@ export class DealFinderComponent {
   protected readonly isExtractingUrl = signal(false);
   protected readonly extractUrlError = signal<string | null>(null);
   protected readonly extractSuccessMessage = signal<string | null>(null);
+  protected readonly extractWarnings = signal<string[]>([]);
 
   protected readonly newDealModel = signal<CreateDealRequest>({
     title: '',
@@ -98,6 +99,9 @@ export class DealFinderComponent {
     insuranceAnnual: 180,
     rentGrowthRate: 1.5,
     propertyGrowthRate: 1.2,
+    monthlyNetIncome: 3500,
+    existingMonthlyDebt: 0,
+    loanInsuranceRate: 0.3,
   });
   protected readonly simulationForm = form(this.simulationModel);
 
@@ -217,6 +221,7 @@ export class DealFinderComponent {
     this.importUrl.set('');
     this.extractUrlError.set(null);
     this.extractSuccessMessage.set(null);
+    this.extractWarnings.set([]);
     this.isCreateModalOpen.set(true);
   }
 
@@ -230,26 +235,35 @@ export class DealFinderComponent {
     this.isExtractingUrl.set(true);
     this.extractUrlError.set(null);
     this.extractSuccessMessage.set(null);
+    this.extractWarnings.set([]);
 
     try {
       const extracted = await this.dealService.extractListingFromUrl(url);
+      // Only overwrite what the listing actually provided; missing values stay editable.
       this.newDealModel.update((model) => ({
         ...model,
-        title: extracted.title,
-        price: extracted.price,
-        monthlyRent: extracted.monthlyRent,
-        surface: extracted.surface,
-        location: extracted.location,
-        propertyType: extracted.propertyType,
-        renovationCost: extracted.renovationCost,
-        monthlyCharges: extracted.monthlyCharges,
-        propertyTax: extracted.propertyTax,
-        imageUrl: extracted.imageUrl,
-        description: extracted.description,
+        title: extracted.title ?? model.title,
+        price: extracted.price ?? model.price,
+        monthlyRent: extracted.monthlyRent ?? model.monthlyRent,
+        surface: extracted.surface ?? model.surface,
+        location: extracted.location ?? model.location,
+        propertyType: extracted.propertyType ?? model.propertyType,
+        renovationCost: extracted.renovationCost ?? model.renovationCost,
+        monthlyCharges: extracted.monthlyCharges ?? model.monthlyCharges,
+        propertyTax: extracted.propertyTax ?? model.propertyTax,
+        imageUrl: extracted.imageUrl ?? model.imageUrl,
+        description: extracted.description ?? model.description,
       }));
-      this.extractSuccessMessage.set(`✓ Annonce importée avec succès (${extracted.platform}) !`);
-    } catch {
-      this.extractUrlError.set('Impossible d’extraire automatiquement cette annonce. Remplis les champs manuellement.');
+      const count = extracted.extractedFields.length;
+      this.extractSuccessMessage.set(
+        count === 0
+          ? `Rien n’a pu être lu sur ${extracted.platform}.`
+          : `${count} champ${count > 1 ? 's' : ''} lu${count > 1 ? 's' : ''} sur ${extracted.platform}${extracted.demo ? ' (démo)' : ''}.`,
+      );
+      this.extractWarnings.set(extracted.warnings);
+    } catch (error: unknown) {
+      const problem = error instanceof HttpErrorResponse ? (error.error as ProblemDetail | null) : null;
+      this.extractUrlError.set(problem?.detail ?? 'Impossible de lire cette annonce. Remplis les champs manuellement.');
     } finally {
       this.isExtractingUrl.set(false);
     }

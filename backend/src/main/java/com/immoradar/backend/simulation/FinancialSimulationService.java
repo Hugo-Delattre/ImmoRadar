@@ -2,6 +2,7 @@ package com.immoradar.backend.simulation;
 
 import com.immoradar.backend.deal.Deal;
 import com.immoradar.backend.deal.DealService;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,6 +16,7 @@ public class FinancialSimulationService {
     private static final BigDecimal TWELVE = BigDecimal.valueOf(12);
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final BigDecimal SOCIAL_CONTRIBUTIONS = new BigDecimal("17.2");
+    private static final BigDecimal BANK_RENT_RETENTION = new BigDecimal("0.70");
 
     private final DealService dealService;
 
@@ -28,26 +30,25 @@ public class FinancialSimulationService {
         var totalProjectCost = deal.getPrice().add(deal.getRenovationCost()).add(notaryFees);
         var loanAmount = totalProjectCost.subtract(request.downpayment()).max(BigDecimal.ZERO);
         var monthlyMortgage = monthlyPayment(loanAmount, request.interestRate(), request.loanTermYears());
+        var monthlyLoanInsurance = monthlyLoanInsurance(loanAmount, request);
+        var monthlyDebtService = monthlyMortgage.add(monthlyLoanInsurance);
         var annualRent = effectiveAnnualRent(deal, request.vacancyRate());
         var operatingExpenses = annualOperatingExpenses(deal, annualRent, request);
         var firstYearInterest = firstYearInterest(loanAmount, request.interestRate(), monthlyMortgage);
-        var taxAnnual = annualTax(deal, request, annualRent, operatingExpenses, firstYearInterest);
+        var firstYearFinancingCosts = firstYearInterest.add(monthlyLoanInsurance.multiply(TWELVE));
+        var taxAnnual = annualTax(deal, request, annualRent, operatingExpenses, firstYearFinancingCosts);
         var annualCashFlow = annualRent
                 .subtract(operatingExpenses)
-                .subtract(monthlyMortgage.multiply(TWELVE))
+                .subtract(monthlyDebtService.multiply(TWELVE))
                 .subtract(taxAnnual);
         var monthlyCashFlow = annualCashFlow.divide(TWELVE, 2, RoundingMode.HALF_UP);
         var grossYield = percentage(deal.getMonthlyRent().multiply(TWELVE), totalProjectCost);
         var netYield = percentage(annualRent.subtract(operatingExpenses), totalProjectCost);
-        var breakEvenRent = operatingExpenses.add(monthlyMortgage.multiply(TWELVE)).add(taxAnnual)
-                .divide(TWELVE, 2, RoundingMode.HALF_UP);
-        var taxComparison = buildTaxComparison(deal, request, annualRent, operatingExpenses, firstYearInterest, monthlyMortgage, totalProjectCost);
-        // Indicative debt ratio based on French average investor household net income (3 500€/month)
-        var debtEffortRatio = monthlyMortgage.signum() > 0
-                ? monthlyMortgage.divide(new BigDecimal("3500"), 4, RoundingMode.HALF_UP).multiply(HUNDRED).setScale(1, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
+        var breakEvenRent = breakEvenRent(deal, request, monthlyDebtService, firstYearFinancingCosts);
+        var taxComparison = buildTaxComparison(deal, request, annualRent, operatingExpenses, firstYearFinancingCosts, monthlyDebtService, totalProjectCost);
+        var debtEffortRatio = debtEffortRatio(deal, request, monthlyDebtService);
 
-        var projection = buildProjection(deal, request, loanAmount, monthlyMortgage);
+        var projection = buildProjection(deal, request, loanAmount, monthlyMortgage, monthlyLoanInsurance);
         var irr = calculateIrr(request, projection, notaryFees);
         var npv = calculateNpv(request, projection, notaryFees);
 
@@ -57,7 +58,62 @@ public class FinancialSimulationService {
                 money(breakEvenRent), cashFlowStatus(monthlyCashFlow),
                 projection,
                 taxComparison, debtEffortRatio,
-                percent(irr), money(npv));
+                percent(irr), money(npv), money(monthlyLoanInsurance));
+    }
+
+    /**
+     * Taux d'effort au sens du HCSF : mensualités (assurance comprise) et crédits en cours rapportés aux
+     * revenus nets du foyer, augmentés de 70 % du loyer attendu comme le retiennent la plupart des banques.
+     * Sans revenu renseigné, le ratio n'est pas calculé.
+     */
+    private static @Nullable BigDecimal debtEffortRatio(Deal deal, SimulationRequest request, BigDecimal monthlyDebtService) {
+        var income = request.monthlyNetIncome();
+        if (income == null) {
+            return null;
+        }
+        var existingDebt = request.existingMonthlyDebt() == null ? BigDecimal.ZERO : request.existingMonthlyDebt();
+        var retainedIncome = income.add(deal.getMonthlyRent().multiply(BANK_RENT_RETENTION));
+        if (retainedIncome.signum() <= 0) {
+            return null;
+        }
+        return monthlyDebtService.add(existingDebt).multiply(HUNDRED)
+                .divide(retainedIncome, 1, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Loyer mensuel brut (avant vacance) qui ramène le cash-flow après impôt de la première année à zéro.
+     * L'impôt dépend du loyer : la recherche se fait par dichotomie plutôt qu'en réutilisant l'impôt du loyer actuel.
+     */
+    private BigDecimal breakEvenRent(
+            Deal deal, SimulationRequest request, BigDecimal monthlyDebtService, BigDecimal financingCosts) {
+        double low = 0;
+        double high = Math.max(deal.getMonthlyRent().doubleValue() * 4, 1000);
+        for (int iteration = 0; iteration < 60; iteration++) {
+            double candidate = (low + high) / 2;
+            if (cashFlowForRent(deal, request, BigDecimal.valueOf(candidate), monthlyDebtService, financingCosts).signum() >= 0) {
+                high = candidate;
+            } else {
+                low = candidate;
+            }
+        }
+        return BigDecimal.valueOf(high);
+    }
+
+    private BigDecimal cashFlowForRent(
+            Deal deal, SimulationRequest request, BigDecimal monthlyRent,
+            BigDecimal monthlyDebtService, BigDecimal financingCosts) {
+        var annualRent = monthlyRent.multiply(TWELVE).multiply(BigDecimal.ONE.subtract(rate(request.vacancyRate())));
+        var expenses = annualOperatingExpenses(deal, annualRent, request);
+        var tax = annualTax(deal, request, annualRent, expenses, financingCosts);
+        return annualRent.subtract(expenses).subtract(monthlyDebtService.multiply(TWELVE)).subtract(tax);
+    }
+
+    private static BigDecimal monthlyLoanInsurance(BigDecimal loanAmount, SimulationRequest request) {
+        var insuranceRate = request.loanInsuranceRate();
+        if (insuranceRate == null || loanAmount.signum() == 0) {
+            return BigDecimal.ZERO;
+        }
+        return loanAmount.multiply(rate(insuranceRate)).divide(TWELVE, 8, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calculateIrr(SimulationRequest request, List<ProjectionPoint> projection, BigDecimal notaryFees) {
@@ -138,7 +194,7 @@ public class FinancialSimulationService {
             BigDecimal annualRent,
             BigDecimal operatingExpenses,
             BigDecimal firstYearInterest,
-            BigDecimal monthlyMortgage,
+            BigDecimal monthlyDebtService,
             BigDecimal totalProjectCost) {
         var regimes = List.of(
                 TaxRegime.REEL_LMNP,
@@ -151,15 +207,10 @@ public class FinancialSimulationService {
         BigDecimal bestCashFlow = new BigDecimal("-999999999");
 
         for (var regime : regimes) {
-            var tempRequest = new SimulationRequest(
-                    request.dealId(), request.downpayment(), request.interestRate(),
-                    request.loanTermYears(), regime, request.marginalTaxRate(),
-                    request.vacancyRate(), request.managementRate(), request.insuranceAnnual(),
-                    request.rentGrowthRate(), request.propertyGrowthRate()
-            );
+            var tempRequest = request.withTaxRegime(regime);
             var tax = annualTax(deal, tempRequest, annualRent, operatingExpenses, firstYearInterest);
             var cashFlow = annualRent.subtract(operatingExpenses)
-                    .subtract(monthlyMortgage.multiply(TWELVE))
+                    .subtract(monthlyDebtService.multiply(TWELVE))
                     .subtract(tax)
                     .divide(TWELVE, 2, RoundingMode.HALF_UP);
             if (cashFlow.compareTo(bestCashFlow) > 0) {
@@ -170,15 +221,10 @@ public class FinancialSimulationService {
 
         var list = new ArrayList<TaxComparisonItem>();
         for (var regime : regimes) {
-            var tempRequest = new SimulationRequest(
-                    request.dealId(), request.downpayment(), request.interestRate(),
-                    request.loanTermYears(), regime, request.marginalTaxRate(),
-                    request.vacancyRate(), request.managementRate(), request.insuranceAnnual(),
-                    request.rentGrowthRate(), request.propertyGrowthRate()
-            );
+            var tempRequest = request.withTaxRegime(regime);
             var tax = annualTax(deal, tempRequest, annualRent, operatingExpenses, firstYearInterest);
             var cashFlow = annualRent.subtract(operatingExpenses)
-                    .subtract(monthlyMortgage.multiply(TWELVE))
+                    .subtract(monthlyDebtService.multiply(TWELVE))
                     .subtract(tax)
                     .divide(TWELVE, 2, RoundingMode.HALF_UP);
             var netYield = percentage(annualRent.subtract(operatingExpenses).subtract(tax), totalProjectCost);
@@ -209,7 +255,8 @@ public class FinancialSimulationService {
             Deal deal,
             SimulationRequest request,
             BigDecimal initialLoan,
-            BigDecimal monthlyMortgage) {
+            BigDecimal monthlyMortgage,
+            BigDecimal monthlyLoanInsurance) {
         var projection = new ArrayList<ProjectionPoint>();
         var remainingLoan = initialLoan;
         var cumulativeCashFlow = BigDecimal.ZERO;
@@ -232,9 +279,10 @@ public class FinancialSimulationService {
                 remainingLoan = remainingLoan.subtract(principal).max(BigDecimal.ZERO);
             }
 
-            var tax = annualTax(deal, request, annualRent, operatingExpenses, annualInterest);
+            var annualLoanInsurance = monthlyLoanInsurance.multiply(TWELVE);
+            var tax = annualTax(deal, request, annualRent, operatingExpenses, annualInterest.add(annualLoanInsurance));
             var annualCashFlow = annualRent.subtract(operatingExpenses)
-                    .subtract(monthlyMortgage.multiply(TWELVE)).subtract(tax);
+                    .subtract(monthlyMortgage.multiply(TWELVE)).subtract(annualLoanInsurance).subtract(tax);
             cumulativeCashFlow = cumulativeCashFlow.add(annualCashFlow);
             propertyValue = year == 1 ? propertyValue : propertyValue.multiply(BigDecimal.ONE.add(propertyGrowth));
             var netWorth = propertyValue.subtract(remainingLoan).add(cumulativeCashFlow);
