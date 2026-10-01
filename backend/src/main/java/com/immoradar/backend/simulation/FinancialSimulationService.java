@@ -39,35 +39,40 @@ public class FinancialSimulationService {
         var monthlyCashFlow = annualCashFlow.divide(TWELVE, 2, RoundingMode.HALF_UP);
         var grossYield = percentage(deal.getMonthlyRent().multiply(TWELVE), totalProjectCost);
         var netYield = percentage(annualRent.subtract(operatingExpenses), totalProjectCost);
-        var breakEvenRent = operatingExpenses.add(monthlyMortgage.multiply(TWELVE)).add(taxAnnual)
-                .divide(TWELVE, 2, RoundingMode.HALF_UP);
+        var breakEvenRent = breakEvenRent(deal, request, monthlyMortgage, firstYearInterest);
         var taxComparison = buildTaxComparison(deal, request, annualRent, operatingExpenses, firstYearInterest, monthlyMortgage, totalProjectCost);
-        // Indicative debt ratio based on French average investor household net income (3 500€/month)
-        var debtEffortRatio = monthlyMortgage.signum() > 0
-                ? monthlyMortgage.divide(new BigDecimal("3500"), 4, RoundingMode.HALF_UP).multiply(HUNDRED).setScale(1, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
         var projection = buildProjection(deal, request, loanAmount, monthlyMortgage);
-        var irr = calculateIrr(request, projection, notaryFees);
-        var npv = calculateNpv(request, projection, notaryFees);
+        var irr = calculateIrr(request, projection);
+        var npv = calculateNpv(request, projection);
 
         return new SimulationResponse(
                 money(totalProjectCost), money(loanAmount), money(monthlyMortgage), money(monthlyCashFlow),
                 percent(grossYield), percent(netYield), money(taxAnnual), money(operatingExpenses),
                 money(breakEvenRent), cashFlowStatus(monthlyCashFlow),
                 projection,
-                taxComparison, debtEffortRatio,
-                percent(irr), money(npv));
+                taxComparison, null,
+                irr == null ? null : percent(irr), money(npv));
     }
 
-    private BigDecimal calculateIrr(SimulationRequest request, List<ProjectionPoint> projection, BigDecimal notaryFees) {
-        if (projection == null || projection.isEmpty()) {
-            return BigDecimal.ZERO;
+    private BigDecimal breakEvenRent(Deal deal, SimulationRequest request, BigDecimal monthlyMortgage, BigDecimal firstYearInterest) {
+        BigDecimal low = BigDecimal.ZERO;
+        BigDecimal high = new BigDecimal("100000");
+        for (int i = 0; i < 40; i++) {
+            BigDecimal midpoint = low.add(high).divide(BigDecimal.valueOf(2), 8, RoundingMode.HALF_UP);
+            BigDecimal rent = midpoint.multiply(TWELVE).multiply(BigDecimal.ONE.subtract(rate(request.vacancyRate())));
+            BigDecimal expenses = annualOperatingExpenses(deal, rent, request);
+            BigDecimal tax = annualTax(deal, request, rent, expenses, firstYearInterest);
+            BigDecimal cashFlow = rent.subtract(expenses).subtract(monthlyMortgage.multiply(TWELVE)).subtract(tax);
+            if (cashFlow.signum() >= 0) high = midpoint;
+            else low = midpoint;
         }
+        return high;
+    }
+
+    private BigDecimal calculateIrr(SimulationRequest request, List<ProjectionPoint> projection) {
+        if (projection.isEmpty() || request.downpayment().signum() == 0) return null;
         int n = projection.size();
-        double initialEquity = request.downpayment().signum() > 0
-                ? request.downpayment().doubleValue()
-                : (notaryFees.signum() > 0 ? notaryFees.doubleValue() : 1000.0);
+        double initialEquity = request.downpayment().doubleValue();
 
         double[] cf = new double[n + 1];
         for (int t = 1; t <= n; t++) {
@@ -108,17 +113,17 @@ public class FinancialSimulationService {
             }
             r = nextR;
         }
-        return BigDecimal.valueOf(r * 100.0);
+        double residual = -initialEquity;
+        for (int t = 1; t <= n; t++) residual += cf[t] / Math.pow(1.0 + r, t);
+        return Math.abs(residual) > 1.0 ? null : BigDecimal.valueOf(r * 100.0);
     }
 
-    private BigDecimal calculateNpv(SimulationRequest request, List<ProjectionPoint> projection, BigDecimal notaryFees) {
+    private BigDecimal calculateNpv(SimulationRequest request, List<ProjectionPoint> projection) {
         if (projection == null || projection.isEmpty()) {
             return BigDecimal.ZERO;
         }
         int n = projection.size();
-        double initialEquity = request.downpayment().signum() > 0
-                ? request.downpayment().doubleValue()
-                : (notaryFees.signum() > 0 ? notaryFees.doubleValue() : 1000.0);
+        double initialEquity = request.downpayment().doubleValue();
 
         double discountRate = 0.04; // 4% hurdle rate benchmark
         double npv = -initialEquity;
@@ -191,10 +196,10 @@ public class FinancialSimulationService {
                 case SCI_IS -> "SCI à l'IS";
             };
             var advantage = switch (regime) {
-                case REEL_LMNP -> "Amortissement bâti (85%) & déduction intégrale des travaux et intérêts";
-                case MICRO_BIC -> "Abattement forfaitaire simple de 50% sur les loyers bruts";
-                case NU -> "Régime forfaitaire (abattement 30%) avec imputation déficit foncier";
-                case SCI_IS -> "Taux réduit IS à 15% jusqu'à 42 500€ de bénéfice, capitalisation";
+                case REEL_LMNP -> "Hypothèse simplifiée d'amortissement et de déduction : à confirmer selon votre situation";
+                case MICRO_BIC -> "Hypothèse forfaitaire sur les loyers : vérifier votre éligibilité et le taux applicable";
+                case NU -> "Hypothèse micro-foncier, sans calcul de déficit foncier";
+                case SCI_IS -> "Hypothèse d'impôt société, hors fiscalité de distribution et de revente";
             };
 
             list.add(new TaxComparisonItem(

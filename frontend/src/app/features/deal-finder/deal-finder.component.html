@@ -33,6 +33,8 @@
       </div>
     </section>
 
+    <p class="data-notice">Les cinq biens présents au premier démarrage sont des exemples fictifs. Une annonce importée conserve son lien source ; vérifie toujours les chiffres avant de décider.</p>
+
     <section class="metrics-grid" aria-label="Indicateurs du portefeuille">
       <article class="metric-card metric-featured">
         <span class="metric-icon">⌁</span>
@@ -51,7 +53,7 @@
       </article>
       <article class="metric-card">
         <span class="metric-icon score">✦</span>
-        <div><small>Meilleur radar score</small><strong>{{ globalMetrics().bestScore }}<sup>/10</sup></strong></div>
+        <div><small>Rendement brut max affiché</small><strong>{{ globalMetrics().bestYield }}<sup>%</sup></strong></div>
         <span class="metric-caption">Rentabilité et résilience</span>
       </article>
     </section>
@@ -114,9 +116,10 @@
                 <button class="deal-card" type="button" (click)="selectDeal(deal.id)" [attr.aria-pressed]="selectedDeal()?.id === deal.id">
                   <img [src]="deal.imageUrl" [alt]="deal.title" />
                   <span class="deal-content">
-                    <span class="deal-topline">
+                  <span class="deal-topline">
                       <span class="type-pill">{{ propertyTypeLabel(deal.propertyType) }}</span>
-                      <span class="score-pill">{{ deal.opportunityScore }}</span>
+                      @if (!deal.sourceUrl) { <span class="type-pill">Saisie / exemple</span> }
+                      <span class="score-pill">{{ deal.grossYield }} % brut</span>
                     </span>
                     <strong>{{ deal.title }}</strong>
                     <small class="location">⌖ {{ deal.location }} · {{ deal.surface }} m²</small>
@@ -159,9 +162,10 @@
             <img [src]="deal.imageUrl" [alt]="deal.title" />
             <div class="property-overlay"></div>
             <div class="property-copy">
-              <div class="property-badges"><span>{{ propertyTypeLabel(deal.propertyType) }}</span><span>{{ deal.surface }} m²</span><span class="high-score">Radar score {{ deal.opportunityScore }}</span></div>
+              <div class="property-badges"><span>{{ propertyTypeLabel(deal.propertyType) }}</span><span>{{ deal.surface }} m²</span><span class="high-score">{{ deal.grossYield }} % brut</span></div>
               <h2>{{ deal.title }}</h2>
               <p>⌖ {{ deal.location }}</p>
+              @if (deal.sourceUrl) { <p><a [href]="deal.sourceUrl" target="_blank" rel="noopener noreferrer">Voir l’annonce source ↗</a></p> }
             </div>
             <div class="property-price"><small>Prix affiché</small><strong>{{ formatCurrency(deal.price) }}</strong><span>{{ formatCurrency(deal.pricePerSquareMeter) }}/m²</span></div>
           </div>
@@ -178,52 +182,32 @@
               <div class="dvf-header">
                 <div>
                   <div class="dvf-eyebrow">
-                    <span class="dvf-tag">data.gouv.fr</span>
-                    <span>Transactions réelles notariées (5 ans)</span>
+                    <span class="dvf-tag">DVF · DGFiP</span>
+                    <span>Comparaison communale · ventes individuelles</span>
                   </div>
-                  <h3>Intelligence de marché · {{ market.location }}</h3>
+                  <h3>Prix du marché · {{ market.location }}</h3>
                 </div>
-                <div class="dvf-status-badge" [class]="marketStatusBadge(market.marketStatus).cssClass">
-                  {{ marketStatusBadge(market.marketStatus).text }}
+                <div class="dvf-status-badge">{{ market.available ? 'Source vérifiable' : 'Données insuffisantes' }}</div>
+              </div>
+              @if (market.available) {
+                <div class="dvf-grid">
+                  <article class="dvf-metric"><small>Médiane · {{ market.propertyCategory }}</small><strong>{{ formatCurrency(market.medianPricePerSquareMeter) }}<span class="unit">/m²</span></strong><span class="range">{{ market.comparableCount }} ventes de même catégorie et tranche de surface</span></article>
+                  <article class="dvf-metric"><small>Prix du bien</small><strong>{{ formatCurrency(market.dealPricePerSquareMeter) }}<span class="unit">/m²</span></strong><span class="range">Prix affiché ÷ surface déclarée</span></article>
+                  <article class="dvf-metric"><small>Écart à la médiane</small><strong [class.negative]="(market.deltaPercentage ?? 0) > 0" [class.positive]="(market.deltaPercentage ?? 0) < 0">{{ (market.deltaPercentage ?? 0) > 0 ? '+' : '' }}{{ market.deltaPercentage }} %</strong><span class="range">Un écart ne suffit pas à conclure à une bonne affaire.</span></article>
+                  <article class="dvf-metric"><small>Référence</small><strong>{{ market.referenceYear }}</strong><span class="range">Commune INSEE {{ market.codeInsee }} · fiabilité {{ market.reliability }}</span></article>
                 </div>
-              </div>
-
-              <div class="dvf-grid">
-                <article class="dvf-metric">
-                  <small>Prix DVF médian</small>
-                  <strong>{{ formatCurrency(market.dvfMedianPricePerSquareMeter) }}<span class="unit">/m²</span></strong>
-                  <span class="range">Fourchette : {{ formatCurrency(market.dvfLowPricePerSquareMeter) }} – {{ formatCurrency(market.dvfHighPricePerSquareMeter) }}</span>
-                </article>
-
-                <article class="dvf-metric">
-                  <small>Écart vs marché</small>
-                  <strong [class.negative]="market.deltaPercentage > 0" [class.positive]="market.deltaPercentage < 0">
-                    {{ market.deltaPercentage > 0 ? '+' : '' }}{{ market.deltaPercentage }}%
-                  </strong>
-                  <span class="range">Bien à {{ formatCurrency(market.dealPricePerSquareMeter) }}/m²</span>
-                </article>
-
-                <article class="dvf-metric">
-                  <small>Offre conseillée</small>
-                  <strong class="highlight">{{ formatCurrency(market.suggestedOfferPrice) }}</strong>
-                  <span class="range">Marge : {{ formatCurrency(market.negotiationMargin) }}</span>
-                </article>
-
-                <article class="dvf-metric">
-                  <small>Tension & Liquidité</small>
-                  <strong>Score {{ market.liquidityScore }}</strong>
-                  <span class="range">{{ market.averageSaleDelayDays }}j délai · {{ market.transactionsCount5Years }} ventes</span>
-                </article>
-              </div>
-
+              }
               <div class="dvf-advice">
                 <div class="advice-icon">💡</div>
                 <div class="advice-content">
-                  <strong>Recommandation stratégique :</strong>
-                  <p>{{ market.advice }}</p>
+                  <strong>{{ market.available ? 'Comment lire ce chiffre' : 'Comparaison impossible' }}</strong>
+                  <p>{{ market.notice }}</p>
+                  @if (market.sourceUrl && market.methodologyUrl) { <p><a [href]="market.sourceUrl" target="_blank" rel="noopener noreferrer">Données et millésime</a> · <a [href]="market.methodologyUrl" target="_blank" rel="noopener noreferrer">Méthode de calcul</a></p> }
                 </div>
               </div>
             </section>
+          } @else if (marketResource.error()) {
+            <section class="dvf-card"><h3>Comparaison indisponible</h3><p>Le service de prix de marché ne répond pas. Aucune estimation n'a été substituée.</p><button type="button" (click)="marketResource.reload()">Réessayer</button></section>
           }
 
           <div class="simulator-heading">
@@ -271,32 +255,22 @@
                 <div class="result-grid">
                   <div><small>Mensualité</small><strong>{{ formatCurrency(result.monthlyMortgage) }}</strong></div>
                   <div><small>Rendement net</small><strong>{{ result.netYield }}%</strong></div>
-                  <div><small>TRI ({{ simulationForm.loanTermYears() }} ans)</small><strong class="highlight-metric">{{ result.internalRateOfReturn ?? 0 }}%</strong></div>
-                  <div><small>VAN (à 4%)</small><strong class="highlight-metric" [class.negative]="(result.netPresentValue ?? 0) < 0">{{ formatSignedCurrency(result.netPresentValue ?? 0) }}</strong></div>
+                  <div><small>TRI brut hypothétique ({{ simulationForm.loanTermYears() }} ans)</small><strong class="highlight-metric">{{ result.internalRateOfReturn == null ? 'Non calculable' : result.internalRateOfReturn + '%' }}</strong></div>
+                  <div><small>VAN brute (à 4%)</small><strong class="highlight-metric" [class.negative]="(result.netPresentValue ?? 0) < 0">{{ formatSignedCurrency(result.netPresentValue ?? 0) }}</strong></div>
                   <div><small>Impôts estimés</small><strong>{{ formatCurrency(result.taxAnnual) }}</strong></div>
                   <div><small>Loyer d’équilibre</small><strong>{{ formatCurrency(result.breakEvenRent) }}</strong></div>
                 </div>
 
                 <app-projection-chart [projection]="result.projection" />
 
-                <div class="debt-ratio-bar" [class.warning]="(result.debtEffortRatio ?? 0) > 35">
-                  <div class="debt-info">
-                    <span>Taux d’effort bancaire indicatif (HCSF)</span>
-                    <strong>{{ result.debtEffortRatio ?? 0 }}%</strong>
-                  </div>
-                  <div class="debt-track">
-                    <div class="debt-fill" [style.width.%]="Math.min(100, (result.debtEffortRatio ?? 0))" [class.danger]="(result.debtEffortRatio ?? 0) > 35"></div>
-                    <div class="hcsf-limit-marker" title="Plafond HCSF légal : 35%"><span>35%</span></div>
-                  </div>
-                  <small>{{ (result.debtEffortRatio ?? 0) <= 35 ? '✓ Conforme au seuil maximal d’endettement de 35% recommandé par le HCSF.' : '⚠️ Dépassement du seuil HCSF de 35% : un apport supérieur ou un allongement de durée est conseillé.' }}</small>
-                </div>
+                <p class="result-explainer">TRI et VAN : scénario brut hors frais et impôts de cession. Capacité bancaire non évaluée sans revenus et crédits existants. Fiscalité simplifiée à faire valider.</p>
 
                 @if (result.taxComparison && result.taxComparison.length > 0) {
                   <div class="tax-comparison-card">
                     <div class="tax-comp-header">
                       <div>
-                        <span class="tax-tag">Moteur fiscal expert</span>
-                        <h4>Comparatif multi-régimes en temps réel</h4>
+                        <span class="tax-tag">Hypothèses fiscales</span>
+                        <h4>Comparatif indicatif des régimes</h4>
                       </div>
                       <small>Clique sur un régime pour l'appliquer</small>
                     </div>
@@ -312,7 +286,7 @@
                           <div class="regime-top">
                             <strong>{{ item.label }}</strong>
                             @if (item.isRecommended) {
-                              <span class="rec-badge">Optimal</span>
+                              <span class="rec-badge">Cash-flow simulé max</span>
                             }
                           </div>
                           <div class="regime-metrics">
@@ -365,10 +339,10 @@
         <section class="url-import-card" aria-label="Importation rapide d’annonce par URL">
           <div class="url-import-header">
             <div>
-              <span class="url-tag">⚡ Analyseur en 1 clic</span>
+              <span class="url-tag">⚡ Préremplissage assisté</span>
               <strong>Importer directement depuis une annonce</strong>
             </div>
-            <small>Leboncoin, SeLoger, PAP, Bien'Ici…</small>
+            <small>Extraction limitée aux pages publiques accessibles</small>
           </div>
           <div class="url-input-wrap">
             <input
@@ -385,12 +359,6 @@
               {{ isExtractingUrl() ? 'Extraction…' : 'Analyser l’annonce' }}
             </button>
           </div>
-          <div class="url-shortcuts">
-            <small>Démos rapides :</small>
-            <button type="button" (click)="fillDemoListing('leboncoin')">Leboncoin · Maison Le Havre</button>
-            <button type="button" (click)="fillDemoListing('seloger')">SeLoger · Studio Paris</button>
-            <button type="button" (click)="fillDemoListing('pap')">PAP · T2 Bordeaux</button>
-          </div>
           @if (extractUrlError()) {
             <p class="url-error" role="alert">{{ extractUrlError() }}</p>
           }
@@ -404,13 +372,14 @@
           <label class="full-field"><span>Titre du bien *</span><input type="text" [formField]="newDealForm.title" placeholder="Ex. T3 lumineux proche gare" />@if (submitFieldErrors()['title']; as error) { <small class="field-error">{{ error }}</small> }</label>
           <label class="full-field"><span>Localisation *</span><input type="text" [formField]="newDealForm.location" placeholder="Ex. Angers (49)" />@if (submitFieldErrors()['location']; as error) { <small class="field-error">{{ error }}</small> }</label>
           <label><span>Prix d’achat *</span><div class="input-suffix"><input type="number" [formField]="newDealForm.price" /><b>€</b></div>@if (submitFieldErrors()['price']; as error) { <small class="field-error">{{ error }}</small> }</label>
-          <label><span>Loyer mensuel *</span><div class="input-suffix"><input type="number" [formField]="newDealForm.monthlyRent" /><b>€</b></div></label>
-          <label><span>Surface *</span><div class="input-suffix"><input type="number" [formField]="newDealForm.surface" /><b>m²</b></div></label>
+          <label><span>Loyer mensuel vérifié ou hypothèse *</span><div class="input-suffix"><input type="number" [formField]="newDealForm.monthlyRent" /><b>€</b></div>@if (submitFieldErrors()['monthlyRent']; as error) { <small class="field-error">{{ error }}</small> }</label>
+          <label><span>Surface *</span><div class="input-suffix"><input type="number" [formField]="newDealForm.surface" /><b>m²</b></div>@if (submitFieldErrors()['surface']; as error) { <small class="field-error">{{ error }}</small> }</label>
           <label><span>Type de bien</span><select [formField]="newDealForm.propertyType"><option value="Studio">Studio</option><option value="Apartment">Appartement</option><option value="Building">Immeuble</option><option value="House">Maison</option></select></label>
           <label><span>Charges mensuelles</span><div class="input-suffix"><input type="number" [formField]="newDealForm.monthlyCharges" /><b>€</b></div></label>
           <label><span>Taxe foncière annuelle</span><div class="input-suffix"><input type="number" [formField]="newDealForm.propertyTax" /><b>€</b></div></label>
           <label><span>Budget travaux</span><div class="input-suffix"><input type="number" [formField]="newDealForm.renovationCost" /><b>€</b></div></label>
           <label><span>URL de la photo</span><input type="url" [formField]="newDealForm.imageUrl" placeholder="https://…" /></label>
+          <label class="full-field"><span>URL de l’annonce source</span><input type="url" [formField]="newDealForm.sourceUrl" placeholder="https://…" /></label>
           <label class="full-field"><span>Note d’analyse</span><textarea rows="3" [formField]="newDealForm.description" placeholder="Atouts, points de vigilance, stratégie locative…"></textarea></label>
           <footer><button class="secondary-button" type="button" (click)="closeCreateModal()">Annuler</button><button class="primary-button" type="submit" [disabled]="isSubmitting()">{{ isSubmitting() ? 'Analyse en cours…' : 'Créer l’analyse' }}</button></footer>
         </form>

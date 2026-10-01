@@ -16,6 +16,7 @@ export interface Deal {
   opportunityScore: number;
   imageUrl: string;
   favorite: boolean;
+  sourceUrl: string | null;
   grossYield: number;
   monthlyOperatingIncome: number;
   pricePerSquareMeter: number;
@@ -73,15 +74,15 @@ export interface TaxComparisonItem {
 export interface ListingExtractResult {
   title: string;
   price: number;
-  monthlyRent: number;
+  monthlyRent: number | null;
   surface: number;
-  location: string;
+  location: string | null;
   propertyType: PropertyType;
-  renovationCost: number;
-  monthlyCharges: number;
-  propertyTax: number;
-  imageUrl: string;
-  description: string;
+  renovationCost: number | null;
+  monthlyCharges: number | null;
+  propertyTax: number | null;
+  imageUrl: string | null;
+  description: string | null;
   sourceUrl: string;
   platform: string;
 }
@@ -116,6 +117,7 @@ export interface CreateDealRequest {
   propertyType: PropertyType;
   description: string;
   imageUrl: string;
+  sourceUrl: string;
 }
 
 export interface ProblemDetail {
@@ -129,17 +131,17 @@ export interface ProblemDetail {
 }
 
 export interface DvfMarketAnalysis {
+  available: boolean;
   location: string;
+  codeInsee: string | null;
+  propertyCategory: string | null;
   dealPricePerSquareMeter: number;
-  dvfMedianPricePerSquareMeter: number;
-  dvfLowPricePerSquareMeter: number;
-  dvfHighPricePerSquareMeter: number;
-  deltaPercentage: number;
-  marketStatus: 'SOUS_EVALUE' | 'ALIGNE' | 'SUREVALUE';
-  suggestedOfferPrice: number;
-  negotiationMargin: number;
-  transactionsCount5Years: number;
-  liquidityScore: string;
-  averageSaleDelayDays: number;
-  advice: string;
+  medianPricePerSquareMeter: number | null;
+  deltaPercentage: number | null;
+  comparableCount: number;
+  referenceYear: number | null;
+  reliability: string | null;
+  sourceUrl: string | null;
+  methodologyUrl: string | null;
+  notice: string;
 }

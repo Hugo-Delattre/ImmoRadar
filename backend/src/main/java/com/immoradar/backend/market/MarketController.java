@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/market")
@@ -25,12 +24,4 @@ public class MarketController {
         return dvfMarketService.analyzeDeal(dealId);
     }
 
-    @GetMapping("/dvf")
-    public DvfMarketAnalysis getCustomMarketAnalysis(
-            @RequestParam String location,
-            @RequestParam BigDecimal pricePerM2,
-            @RequestParam BigDecimal totalPrice,
-            @RequestParam BigDecimal surface) {
-        return dvfMarketService.analyze(location, pricePerM2, totalPrice, surface);
-    }
 }

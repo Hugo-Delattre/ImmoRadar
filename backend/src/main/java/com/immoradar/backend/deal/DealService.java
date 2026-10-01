@@ -17,8 +17,7 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class DealService {
 
-    private static final String DEFAULT_IMAGE =
-            "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=85";
+    private static final String DEFAULT_IMAGE = "/images/property-placeholder.svg";
     private static final BigDecimal TWELVE = BigDecimal.valueOf(12);
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
@@ -36,7 +35,7 @@ public class DealService {
             boolean favoritesOnly,
             int page,
             int size) {
-        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "opportunityScore"));
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "price"));
         var deals = dealRepository.findAll(
                 DealSpecifications.matching(priceMax, yieldMin, cashflowMin, location, favoritesOnly),
                 pageable);
@@ -65,7 +64,8 @@ public class DealService {
                 request.description() == null ? "" : request.description().trim(),
                 calculateOpportunityScore(request),
                 request.imageUrl() == null || request.imageUrl().isBlank() ? DEFAULT_IMAGE : request.imageUrl().trim(),
-                false);
+                false,
+                request.sourceUrl() == null || request.sourceUrl().isBlank() ? null : request.sourceUrl().trim());
 
         return toResponse(dealRepository.save(deal));
     }
@@ -100,7 +100,8 @@ public class DealService {
                 deal.getOpportunityScore(), deal.getImageUrl(), deal.isFavorite(),
                 percentage(deal.getMonthlyRent().multiply(TWELVE), deal.getPrice()),
                 monthlyOperatingIncome(deal.getMonthlyRent(), deal.getMonthlyCharges(), deal.getPropertyTax()),
-                deal.getPrice().divide(deal.getSurface(), 0, RoundingMode.HALF_UP));
+                deal.getPrice().divide(deal.getSurface(), 0, RoundingMode.HALF_UP),
+                deal.getSourceUrl());
     }
 
     private static BigDecimal percentage(BigDecimal numerator, BigDecimal denominator) {

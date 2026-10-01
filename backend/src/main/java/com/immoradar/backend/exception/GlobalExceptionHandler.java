@@ -1,6 +1,7 @@
 package com.immoradar.backend.exception;
 
 import com.immoradar.backend.deal.DealNotFoundException;
+import com.immoradar.backend.listing.ListingExtractionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -60,6 +61,13 @@ public class GlobalExceptionHandler {
         problemDetail.setType(URI.create("https://immoradar.fr/errors/deal-not-found"));
         problemDetail.setProperty("timestamp", Instant.now());
         return problemDetail;
+    }
+
+    @ExceptionHandler(ListingExtractionException.class)
+    public ProblemDetail handleListingExtraction(ListingExtractionException ex) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        problem.setTitle("Extraction impossible");
+        return problem;
     }
 
     @ExceptionHandler(Exception.class)

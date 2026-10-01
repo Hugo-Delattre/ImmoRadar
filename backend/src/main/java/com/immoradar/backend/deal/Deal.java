@@ -45,4 +45,14 @@ public class Deal {
     private double opportunityScore;
     private String imageUrl;
     private boolean favorite;
+    @Column(length = 2048)
+    private String sourceUrl;
+
+    public Deal(String id, String title, BigDecimal price, BigDecimal monthlyRent,
+                BigDecimal monthlyCharges, BigDecimal propertyTax, BigDecimal renovationCost,
+                String location, BigDecimal surface, PropertyType propertyType, String description,
+                double opportunityScore, String imageUrl, boolean favorite) {
+        this(id, title, price, monthlyRent, monthlyCharges, propertyTax, renovationCost, location,
+                surface, propertyType, description, opportunityScore, imageUrl, favorite, null);
+    }
 }

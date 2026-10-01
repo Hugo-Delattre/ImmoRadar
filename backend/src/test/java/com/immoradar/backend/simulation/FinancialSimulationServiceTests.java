@@ -53,12 +53,34 @@ class FinancialSimulationServiceTests {
     }
 
     @Test
-    void shouldProvideMultiRegimeTaxComparisonAndDebtEffort() {
+    void shouldProvideMultiRegimeComparisonWithoutInventedBorrowerIncome() {
         var result = simulationService.simulate(request(TaxRegime.REEL_LMNP, "3.5"));
 
         assertThat(result.taxComparison()).hasSize(4);
         assertThat(result.taxComparison()).anyMatch(TaxComparisonItem::isRecommended);
-        assertThat(result.debtEffortRatio()).isPositive();
+        assertThat(result.debtEffortRatio()).isNull();
+    }
+
+    @Test
+    void shouldNotInventInitialEquityForZeroDownpayment() {
+        var request = new SimulationRequest("deal-1", BigDecimal.ZERO, amount("3.5"), 20,
+                TaxRegime.REEL_LMNP, amount("30"), amount("4"), BigDecimal.ZERO,
+                amount("180"), amount("1.5"), amount("1.2"));
+
+        var result = simulationService.simulate(request);
+
+        assertThat(result.internalRateOfReturn()).isNull();
+        assertThat(result.debtEffortRatio()).isNull();
+    }
+
+    @Test
+    void breakEvenRentShouldActuallyProduceNearZeroCashFlow() {
+        var deal = sampleDeal();
+        when(dealService.getEntity("deal-1")).thenReturn(deal);
+        var result = simulationService.simulate(request(TaxRegime.REEL_LMNP, "3.5"));
+        deal.setMonthlyRent(result.breakEvenRent());
+        var atBreakEven = simulationService.simulate(request(TaxRegime.REEL_LMNP, "3.5"));
+        assertThat(atBreakEven.monthlyCashFlow().abs()).isLessThanOrEqualTo(amount("0.02"));
     }
 
     @Test

@@ -1,19 +1,20 @@
 package com.immoradar.backend.listing;
 
 import java.math.BigDecimal;
+import org.jspecify.annotations.Nullable;
 
 public record ListingExtractDto(
         String title,
         BigDecimal price,
-        BigDecimal monthlyRent,
+        @Nullable BigDecimal monthlyRent,
         BigDecimal surface,
-        String location,
+        @Nullable String location,
         String propertyType,
-        BigDecimal renovationCost,
-        BigDecimal monthlyCharges,
-        BigDecimal propertyTax,
-        String imageUrl,
-        String description,
+        @Nullable BigDecimal renovationCost,
+        @Nullable BigDecimal monthlyCharges,
+        @Nullable BigDecimal propertyTax,
+        @Nullable String imageUrl,
+        @Nullable String description,
         String sourceUrl,
         String platform
 ) {

@@ -21,5 +21,6 @@ public record DealResponse(
         boolean favorite,
         BigDecimal grossYield,
         BigDecimal monthlyOperatingIncome,
-        BigDecimal pricePerSquareMeter
+        BigDecimal pricePerSquareMeter,
+        String sourceUrl
 ) {}

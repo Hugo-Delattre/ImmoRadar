@@ -32,40 +32,40 @@ test.beforeEach(async ({ page }) => {
         { regime: 'NU', label: 'Location Nue', annualTax: 950, monthlyCashFlow: 320, netYield: 5.5, isRecommended: false, advantage: 'Micro-foncier' },
         { regime: 'SCI_IS', label: "SCI à l'IS", annualTax: 450, monthlyCashFlow: 360, netYield: 6.0, isRecommended: false, advantage: 'Taux 15%' },
       ],
-      debtEffortRatio: 28.5,
+      debtEffortRatio: null,
       internalRateOfReturn: 10.4,
       netPresentValue: 48200,
     } });
   });
   await page.route('**/api/market/**', async route => {
     await route.fulfill({ json: {
+      available: true,
       location: 'Lyon (69)',
+      codeInsee: '69123',
+      propertyCategory: 'Appartement',
       dealPricePerSquareMeter: 3000,
-      dvfMedianPricePerSquareMeter: 3500,
-      dvfLowPricePerSquareMeter: 2900,
-      dvfHighPricePerSquareMeter: 4200,
+      medianPricePerSquareMeter: 3500,
       deltaPercentage: -14.3,
-      marketStatus: 'SOUS_EVALUE',
-      suggestedOfferPrice: 175000,
-      negotiationMargin: 5000,
-      transactionsCount5Years: 342,
-      liquidityScore: 'A',
-      averageSaleDelayDays: 45,
-      advice: 'Bien positionné sous la médiane DVF du quartier. Forte tension locative.',
+      comparableCount: 342,
+      referenceYear: 2025,
+      reliability: 'Forte',
+      sourceUrl: 'https://foncierdata.fr/api/v1/commune/69123.json',
+      methodologyUrl: 'https://foncierdata.fr/methodologie',
+      notice: 'Repère communal, pas une estimation du bien.',
     } });
   });
   await page.route('**/api/listings/extract', async route => {
     await route.fulfill({ json: {
       title: 'Maison 3 pièces 74 m²',
       price: 180000,
-      monthlyRent: 950,
+      monthlyRent: null,
       surface: 74,
-      location: 'Le Havre (76600)',
+      location: null,
       propertyType: 'House',
-      renovationCost: 0,
-      monthlyCharges: 40,
-      propertyTax: 890,
-      imageUrl: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop&q=80',
+      renovationCost: null,
+      monthlyCharges: null,
+      propertyTax: null,
+      imageUrl: null,
       description: 'Maison 3 pièces 74 m² avec 2 chambres, terrasse de 40 m² et garage.',
       sourceUrl: 'https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816',
       platform: 'Leboncoin',
@@ -111,32 +111,31 @@ test('shows a recoverable error when the API fails', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Réessayer', exact: true })).toBeVisible();
 });
 
-test('displays DVF market intelligence and negotiation recommendation', async ({ page }) => {
+test('displays sourced communal market data without negotiation claims', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Intelligence de marché · Lyon (69)')).toBeVisible();
-  await expect(page.getByText('Sous-évalué vs DVF')).toBeVisible();
-  await expect(page.getByText('-14.3%')).toBeVisible();
-  await expect(page.getByText('Score A')).toBeVisible();
-  await expect(page.getByText('Bien positionné sous la médiane DVF du quartier.')).toBeVisible();
+  await expect(page.getByText('Prix du marché · Lyon (69)')).toBeVisible();
+  await expect(page.getByText('-14.3 %')).toBeVisible();
+  await expect(page.getByText('342 ventes de même catégorie et tranche de surface')).toBeVisible();
+  await expect(page.getByText('Repère communal, pas une estimation du bien.')).toBeVisible();
 });
 
-test('displays multi-regime tax comparison and debt effort alert', async ({ page }) => {
+test('displays tax scenarios without fictitious borrowing capacity', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Taux d’effort bancaire indicatif (HCSF)')).toBeVisible();
-  await expect(page.getByText('28.5%')).toBeVisible();
-  await expect(page.getByText('Comparatif multi-régimes en temps réel')).toBeVisible();
+  await expect(page.getByText('Capacité bancaire non évaluée sans revenus et crédits existants.', { exact: false })).toBeVisible();
+  await expect(page.getByText('Comparatif indicatif des régimes')).toBeVisible();
   await expect(page.getByText('LMNP Réel')).toBeVisible();
-  await expect(page.getByText('Optimal')).toBeVisible();
+  await expect(page.getByText('Cash-flow simulé max')).toBeVisible();
 });
 
 test('extracts listing via URL in 1 click and populates creation form', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Ajouter un bien' }).click();
   await expect(page.getByText('Importer directement depuis une annonce')).toBeVisible();
-  await page.getByRole('button', { name: 'Leboncoin · Maison Le Havre' }).click();
-  await expect(page.getByText('Annonce importée avec succès (Leboncoin)')).toBeVisible();
+  await page.getByPlaceholder('Ex. https://www.leboncoin.fr/ad/ventes_immobilieres/...').fill('https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816');
+  await page.getByRole('button', { name: 'Analyser l’annonce' }).click();
+  await expect(page.getByText('Prix et surface repérés dans la page.', { exact: false })).toBeVisible();
   await expect(page.getByPlaceholder('Ex. T3 lumineux proche gare')).toHaveValue('Maison 3 pièces 74 m²');
-  await expect(page.getByPlaceholder('Ex. Angers (49)')).toHaveValue('Le Havre (76600)');
+  await expect(page.getByPlaceholder('Ex. Angers (49)')).toHaveValue('');
 });
 
 
