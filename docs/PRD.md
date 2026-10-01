@@ -5,6 +5,7 @@ Mise à jour : 1 octobre 2026. Objectif : aider à **présélectionner** des inv
 ## Livré et vérifié dans le code
 
 - [x] Front Angular : catalogue, pagination, filtres, favoris, formulaire de création, états de chargement/erreur, simulation interactive, visualisation des projections et téléchargement PDF.
+- [x] Identité visuelle ImmoRadar : symbole maison/radar sur fond transparent, intégré à l'en-tête et à l'icône d'onglet.
 - [x] API Spring : persistance des biens, recherche, simulation, PDF et validation des saisies ; tests unitaires et de contexte.
 - [x] Source d'annonce conservée avec le bien ; import opportuniste de métadonnées sur domaines autorisés. Aucun repli vers un bien fictif en cas d'échec ; saisie manuelle disponible.
 - [x] Agrégat de marché issu de transactions DVF via FoncierData, par **commune, type et tranche de surface**. Année, effectif et liens de provenance visibles ; absence de résultat si données insuffisantes.
