@@ -4,6 +4,8 @@ import com.immoradar.backend.deal.dto.CreateDealRequest;
 import com.immoradar.backend.deal.dto.DealResponse;
 import com.immoradar.backend.deal.dto.DealSearchResponse;
 import com.immoradar.backend.market.DvfMarketService;
+import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,19 +20,22 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class DealService {
 
-    private static final String DEFAULT_IMAGE =
-            "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=85";
+    private static final String DEFAULT_IMAGE = "/images/property-placeholder.svg";
     private static final BigDecimal TWELVE = BigDecimal.valueOf(12);
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final DealRepository dealRepository;
     private final DvfMarketService marketService;
     private final Clock clock;
+    private final boolean marketComparisonEnabled;
 
-    public DealService(DealRepository dealRepository, DvfMarketService marketService, Clock clock) {
+    public DealService(
+            DealRepository dealRepository, DvfMarketService marketService, Clock clock,
+            @Value("${immoradar.market.score-with-market:true}") boolean marketComparisonEnabled) {
         this.dealRepository = dealRepository;
         this.marketService = marketService;
         this.clock = clock;
+        this.marketComparisonEnabled = marketComparisonEnabled;
     }
 
     public DealSearchResponse search(DealSearchCriteria criteria, int page, int size) {
@@ -119,11 +124,17 @@ public class DealService {
 
     private Deal rescore(Deal deal) {
         deal.refreshDerivedValues();
-        var market = marketService.analyze(
-                deal.getLocation(), deal.getPrice(), deal.getSurface(), deal.getPropertyType());
-        deal.setMarketDeltaPercent(market.deltaPercentage().doubleValue());
+        deal.setMarketDeltaPercent(marketDelta(deal));
         deal.setOpportunityScore(DealScoring.score(DealScoring.breakdown(deal, today())));
         return deal;
+    }
+
+    /** Écart au prix médian des ventes comparables, ou {@code null} sans référence vérifiable. */
+    private @Nullable Double marketDelta(Deal deal) {
+        if (!marketComparisonEnabled) return null;
+        var pricePerSquareMeter = deal.getPrice().divide(deal.getSurface(), 0, RoundingMode.HALF_UP);
+        var market = marketService.analyze(deal.getLocation(), pricePerSquareMeter, deal.getPropertyType(), deal.getSurface());
+        return market.available() && market.deltaPercentage() != null ? market.deltaPercentage().doubleValue() : null;
     }
 
     private DealResponse toResponse(Deal deal) {

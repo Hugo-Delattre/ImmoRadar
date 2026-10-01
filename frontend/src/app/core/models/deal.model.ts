@@ -106,12 +106,12 @@ export interface TaxComparisonItem {
 
 /** Champs lus dans l'annonce ; un champ absent reste null et doit être saisi à la main. */
 export interface ListingExtractResult {
-  title: string | null;
-  price: number | null;
+  title: string;
+  price: number;
   monthlyRent: number | null;
-  surface: number | null;
+  surface: number;
   location: string | null;
-  propertyType: PropertyType | null;
+  propertyType: PropertyType;
   renovationCost: number | null;
   monthlyCharges: number | null;
   propertyTax: number | null;
@@ -119,9 +119,6 @@ export interface ListingExtractResult {
   description: string | null;
   sourceUrl: string;
   platform: string;
-  extractedFields: string[];
-  warnings: string[];
-  demo: boolean;
 }
 
 export interface SimulationResult {
@@ -138,7 +135,7 @@ export interface SimulationResult {
   projection: ProjectionPoint[];
   taxComparison?: TaxComparisonItem[];
   debtEffortRatio?: number | null;
-  internalRateOfReturn?: number;
+  internalRateOfReturn?: number | null;
   netPresentValue?: number;
   monthlyLoanInsurance?: number;
 }
@@ -171,21 +168,17 @@ export interface ProblemDetail {
 }
 
 export interface DvfMarketAnalysis {
+  available: boolean;
   location: string;
+  codeInsee: string | null;
+  propertyCategory: string | null;
   dealPricePerSquareMeter: number;
-  dvfMedianPricePerSquareMeter: number;
-  dvfLowPricePerSquareMeter: number;
-  dvfHighPricePerSquareMeter: number;
-  deltaPercentage: number;
-  marketStatus: 'SOUS_EVALUE' | 'ALIGNE' | 'SUREVALUE';
-  suggestedOfferPrice: number;
-  negotiationMargin: number;
-  transactionsCount5Years: number;
-  liquidityScore: string;
-  averageSaleDelayDays: number | null;
-  advice: string;
-  source: 'DVF' | 'ESTIMATION';
-  scope: string;
-  periodStart: string | null;
-  periodEnd: string | null;
+  medianPricePerSquareMeter: number | null;
+  deltaPercentage: number | null;
+  comparableCount: number;
+  referenceYear: number | null;
+  reliability: string | null;
+  sourceUrl: string | null;
+  methodologyUrl: string | null;
+  notice: string;
 }

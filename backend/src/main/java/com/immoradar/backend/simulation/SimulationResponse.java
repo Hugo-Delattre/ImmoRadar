@@ -19,7 +19,7 @@ public record SimulationResponse(
         List<ProjectionPoint> projection,
         List<TaxComparisonItem> taxComparison,
         @Nullable BigDecimal debtEffortRatio,
-        BigDecimal internalRateOfReturn,
+        @Nullable BigDecimal internalRateOfReturn,
         BigDecimal netPresentValue,
         BigDecimal monthlyLoanInsurance
 ) {

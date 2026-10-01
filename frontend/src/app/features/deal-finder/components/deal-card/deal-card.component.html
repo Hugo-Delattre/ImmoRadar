@@ -9,6 +9,7 @@
       <span class="topline">
         <span class="pill">{{ typeLabel() }}</span>
         @if (d.status !== 'TO_REVIEW') { <span class="pill status">{{ statusLabel(d.status) }}</span> }
+        @if (!d.sourceUrl) { <span class="pill">Saisie / exemple</span> }
         @if (d.energyClass) {
           <span class="dpe" [class]="'dpe dpe-' + d.energyClass" [attr.title]="'DPE ' + d.energyClass">{{ d.energyClass }}</span>
         }

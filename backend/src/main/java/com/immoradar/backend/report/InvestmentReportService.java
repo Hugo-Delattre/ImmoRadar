@@ -90,7 +90,7 @@ public class InvestmentReportService {
         highlight.setWidthPercentage(100);
         highlight.addCell(highlightCell("Cash-flow mensuel", signedCurrency(simulation.monthlyCashFlow())));
         highlight.addCell(highlightCell("Rendement net", simulation.netYield() + " %"));
-        highlight.addCell(highlightCell("TRI (Horizon " + simulation.projection().size() + " ans)", simulation.internalRateOfReturn() + " %"));
+        highlight.addCell(highlightCell("TRI brut hypothétique", formatIrr(simulation)));
         highlight.setSpacingAfter(15);
         document.add(highlight);
 
@@ -108,7 +108,7 @@ public class InvestmentReportService {
         table.addCell(metricCell("Montant financé", currency(simulation.loanAmount())));
         table.addCell(metricCell("Mensualité crédit", currency(simulation.monthlyMortgage())));
         table.addCell(metricCell("Rendement brut", simulation.grossYield() + " %"));
-        table.addCell(metricCell("TRI (IRR)", simulation.internalRateOfReturn() + " %"));
+        table.addCell(metricCell("TRI brut hypothétique", formatIrr(simulation)));
         table.addCell(metricCell("VAN (NPV à 4%)", signedCurrency(simulation.netPresentValue())));
         table.addCell(metricCell("Fiscalité annuelle", currency(simulation.taxAnnual())));
         table.addCell(metricCell("Loyer d'équilibre", currency(simulation.breakEvenRent())));
@@ -124,9 +124,9 @@ public class InvestmentReportService {
         addRow(table, "Travaux prévus", currency(deal.getRenovationCost()));
         addRow(table, "Apport personnel", currency(request.downpayment()));
         addRow(table, "Taux nominal / durée", request.interestRate() + " % / " + request.loanTermYears() + " ans");
-        addRow(table, "Taux d'effort bancaire (HCSF)", simulation.debtEffortRatio() == null
-                ? "Non calculé (revenus du foyer non renseignés)"
-                : simulation.debtEffortRatio() + " % (max 35%)");
+        addRow(table, "Capacité bancaire (taux d'effort HCSF)", simulation.debtEffortRatio() == null
+                ? "Non évaluée : revenus du foyer non renseignés"
+                : simulation.debtEffortRatio() + " % (max 35 %)");
         addRow(table, "Régime fiscal sélectionné", request.taxRegime().name().replace('_', ' '));
         addRow(table, "Vacance / gestion d'agence", request.vacancyRate() + " % / " + request.managementRate() + " %");
         addRow(table, "Charges d'exploitation annuelles", currency(simulation.annualOperatingExpenses()));
@@ -162,7 +162,7 @@ public class InvestmentReportService {
 
     private void addDisclaimer(Document document) {
         var line = new Paragraph(
-                "Document d'aide à la décision, non contractuel. Les projections dépendent des hypothèses saisies et ne constituent ni un conseil fiscal, ni une offre de financement. Faites valider votre montage par les professionnels compétents.",
+                "Document d'aide à la décision, non contractuel. Fiscalité simplifiée ; TRI/VAN bruts hors frais et impôts de cession. La capacité bancaire n'est pas évaluée. Faites valider le montage par les professionnels compétents.",
                 font(7, Font.NORMAL, MUTED));
         line.setLeading(10);
         document.add(line);
@@ -248,5 +248,11 @@ public class InvestmentReportService {
 
     private static String signedCurrency(BigDecimal value) {
         return (value.signum() >= 0 ? "+" : "−") + currency(value.abs());
+    }
+
+    private static String formatIrr(SimulationResponse simulation) {
+        return simulation.internalRateOfReturn() == null
+                ? "Non calculable"
+                : simulation.internalRateOfReturn() + " %";
     }
 }

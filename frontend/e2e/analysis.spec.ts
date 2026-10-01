@@ -46,47 +46,43 @@ test.beforeEach(async ({ page }) => {
         { regime: 'NU', label: 'Location Nue', annualTax: 950, monthlyCashFlow: 320, netYield: 5.5, isRecommended: false, advantage: 'Micro-foncier' },
         { regime: 'SCI_IS', label: "SCI à l'IS", annualTax: 450, monthlyCashFlow: 360, netYield: 6.0, isRecommended: false, advantage: 'Taux 15%' },
       ],
-      debtEffortRatio: 28.5,
+      debtEffortRatio: null,
       internalRateOfReturn: 10.4,
       netPresentValue: 48200,
     } });
   });
   await page.route('**/api/market/**', async route => {
     await route.fulfill({ json: {
+      available: true,
       location: 'Lyon (69)',
+      codeInsee: '69123',
+      propertyCategory: 'Appartement',
       dealPricePerSquareMeter: 3000,
-      dvfMedianPricePerSquareMeter: 3500,
-      dvfLowPricePerSquareMeter: 2900,
-      dvfHighPricePerSquareMeter: 4200,
+      medianPricePerSquareMeter: 3500,
       deltaPercentage: -14.3,
-      marketStatus: 'SOUS_EVALUE',
-      suggestedOfferPrice: 175000,
-      negotiationMargin: 5000,
-      transactionsCount5Years: 342,
-      liquidityScore: 'A',
-      averageSaleDelayDays: 45,
-      advice: 'Bien positionné sous la médiane DVF du quartier. Forte tension locative.',
-      source: 'DVF', scope: '342 ventes · Appartements, Lyon 3e Arrondissement', periodStart: '2023-01-04', periodEnd: '2025-06-27',
+      comparableCount: 342,
+      referenceYear: 2025,
+      reliability: 'Forte',
+      sourceUrl: 'https://foncierdata.fr/api/v1/commune/69123.json',
+      methodologyUrl: 'https://foncierdata.fr/methodologie',
+      notice: 'Repère communal, pas une estimation du bien.',
     } });
   });
   await page.route('**/api/listings/extract', async route => {
     await route.fulfill({ json: {
       title: 'Maison 3 pièces 74 m²',
       price: 180000,
-      monthlyRent: 950,
+      monthlyRent: null,
       surface: 74,
-      location: 'Le Havre (76600)',
+      location: null,
       propertyType: 'House',
-      renovationCost: 0,
-      monthlyCharges: 40,
-      propertyTax: 890,
-      imageUrl: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop&q=80',
+      renovationCost: null,
+      monthlyCharges: null,
+      propertyTax: null,
+      imageUrl: null,
       description: 'Maison 3 pièces 74 m² avec 2 chambres, terrasse de 40 m² et garage.',
       sourceUrl: 'https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816',
       platform: 'Leboncoin',
-      extractedFields: ['title', 'price', 'monthlyRent', 'surface', 'location'],
-      warnings: ['Annonce de démonstration : les chiffres sont fictifs.'],
-      demo: true,
     } });
   });
 });
@@ -129,53 +125,45 @@ test('shows a recoverable error when the API fails', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Réessayer', exact: true })).toBeVisible();
 });
 
-test('displays DVF market intelligence and negotiation recommendation', async ({ page }) => {
+test('displays sourced communal market data without negotiation claims', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Prix vs marché · Lyon (69)')).toBeVisible();
-  await expect(page.getByText(/342 ventes · Appartements, Lyon 3e Arrondissement/)).toBeVisible();
-  await expect(page.locator('.dvf-status-badge')).toContainText('Sous le prix du marché');
-  await expect(page.getByText('-14.3%')).toBeVisible();
-  await expect(page.getByText('Score A')).toBeVisible();
-  await expect(page.getByText('Bien positionné sous la médiane DVF du quartier.')).toBeVisible();
+  await expect(page.getByText('Prix du marché · Lyon (69)')).toBeVisible();
+  await expect(page.getByText('-14.3 %')).toBeVisible();
+  await expect(page.getByText('342 ventes de même catégorie et tranche de surface')).toBeVisible();
+  await expect(page.getByText('Repère communal, pas une estimation du bien.')).toBeVisible();
 });
 
-test('displays multi-regime tax comparison and debt effort alert', async ({ page }) => {
+test('displays tax scenarios without fictitious borrowing capacity', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Taux d’effort bancaire (règle HCSF)')).toBeVisible();
-  await expect(page.getByText('28.5%')).toBeVisible();
-  await expect(page.getByText('Comparatif multi-régimes en temps réel')).toBeVisible();
+  await expect(page.getByText('Renseigne les revenus nets du foyer pour calculer le taux d’effort bancaire.')).toBeVisible();
+  await expect(page.getByText('Comparatif indicatif des régimes')).toBeVisible();
   await expect(page.getByText('LMNP Réel')).toBeVisible();
-  await expect(page.getByText('Optimal')).toBeVisible();
+  await expect(page.getByText('Cash-flow simulé max')).toBeVisible();
 });
 
 test('extracts listing via URL in 1 click and populates creation form', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Ajouter un bien' }).click();
   await expect(page.getByText('Importer directement depuis une annonce')).toBeVisible();
-  await page.getByRole('button', { name: 'Leboncoin · Maison Le Havre' }).click();
-  await expect(page.getByText('5 champs lus sur Leboncoin (démo).')).toBeVisible();
-  await expect(page.getByText('Annonce de démonstration : les chiffres sont fictifs.')).toBeVisible();
+  await page.getByLabel('URL de l’annonce à importer').fill('https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816');
+  await page.getByRole('button', { name: 'Analyser l’annonce' }).click();
+  await expect(page.getByText('Prix et surface repérés sur', { exact: false })).toBeVisible();
   await expect(page.getByPlaceholder('Ex. T3 lumineux proche gare')).toHaveValue('Maison 3 pièces 74 m²');
-  await expect(page.getByPlaceholder('Ex. Angers (49)')).toHaveValue('Le Havre (76600)');
+  await expect(page.getByPlaceholder('Ex. Angers (49)')).toHaveValue('');
 });
 
-test('keeps manual values and lists what to check when a listing cannot be read', async ({ page }) => {
-  await page.route('**/api/listings/extract', route => route.fulfill({ json: {
-    title: null, price: null, monthlyRent: null, surface: null, location: 'Saint-Etienne (42000)',
-    propertyType: 'Apartment', renovationCost: null, monthlyCharges: null, propertyTax: null,
-    imageUrl: null, description: null, sourceUrl: 'https://www.pap.fr/annonces/appartement-saint-etienne-42000-r1',
-    platform: 'PAP', extractedFields: ['location', 'propertyType'],
-    warnings: ['Prix non trouvé : saisis-le depuis l’annonce.'], demo: false,
+test('keeps manual values when a listing cannot be read', async ({ page }) => {
+  await page.route('**/api/listings/extract', route => route.fulfill({ status: 422, json: {
+    type: 'about:blank', title: 'Annonce incomplète', status: 422,
+    detail: 'Prix ou surface introuvable dans la page : saisis le bien manuellement.',
   } }));
   await page.goto('/');
   await page.getByRole('button', { name: 'Ajouter un bien' }).click();
   await page.getByPlaceholder('Ex. T3 lumineux proche gare').fill('Mon T2');
   await page.getByLabel('URL de l’annonce à importer').fill('https://www.pap.fr/annonces/appartement-saint-etienne-42000-r1');
   await page.getByRole('button', { name: 'Analyser l’annonce' }).click();
-  await expect(page.getByText('2 champs lus sur PAP.')).toBeVisible();
-  await expect(page.getByText('Prix non trouvé : saisis-le depuis l’annonce.')).toBeVisible();
+  await expect(page.getByText('Prix ou surface introuvable dans la page : saisis le bien manuellement.')).toBeVisible();
   await expect(page.getByPlaceholder('Ex. T3 lumineux proche gare')).toHaveValue('Mon T2');
-  await expect(page.getByPlaceholder('Ex. Angers (49)')).toHaveValue('Saint-Etienne (42000)');
 });
 
 test('explains the radar score and the price history of the selected deal', async ({ page }) => {

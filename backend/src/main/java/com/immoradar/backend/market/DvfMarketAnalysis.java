@@ -3,31 +3,25 @@ package com.immoradar.backend.market;
 import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
-/**
- * Comparaison du prix d'un bien avec le marché.
- *
- * <p>{@code source} vaut {@code DVF} quand la référence vient des ventes réelles de la commune
- * (avec leur nombre et leur période), ou {@code ESTIMATION} quand seul un barème départemental
- * indicatif est disponible. {@code averageSaleDelayDays} n'est connu que pour le barème.
- */
+/** A null median means that no market conclusion may be drawn. */
 public record DvfMarketAnalysis(
+        boolean available,
         String location,
+        @Nullable String codeInsee,
+        @Nullable String propertyCategory,
         BigDecimal dealPricePerSquareMeter,
-        BigDecimal dvfMedianPricePerSquareMeter,
-        BigDecimal dvfLowPricePerSquareMeter,
-        BigDecimal dvfHighPricePerSquareMeter,
-        BigDecimal deltaPercentage,
-        String marketStatus, // SOUS_EVALUE, ALIGNE, SUREVALUE
-        BigDecimal suggestedOfferPrice,
-        BigDecimal negotiationMargin,
-        int transactionsCount5Years,
-        String liquidityScore,
-        @Nullable Integer averageSaleDelayDays,
-        String advice,
-        String source,
-        String scope,
-        @Nullable LocalDate periodStart,
-        @Nullable LocalDate periodEnd
-) {}
+        @Nullable BigDecimal medianPricePerSquareMeter,
+        @Nullable BigDecimal deltaPercentage,
+        int comparableCount,
+        @Nullable Integer referenceYear,
+        @Nullable String reliability,
+        @Nullable String sourceUrl,
+        @Nullable String methodologyUrl,
+        String notice
+) {
+    public static DvfMarketAnalysis unavailable(String location, BigDecimal dealPricePerSquareMeter, String reason) {
+        return new DvfMarketAnalysis(false, location, null, null, dealPricePerSquareMeter,
+                null, null, 0, null, null, null, null, reason);
+    }
+}

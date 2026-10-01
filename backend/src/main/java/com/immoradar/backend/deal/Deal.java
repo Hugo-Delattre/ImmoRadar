@@ -63,7 +63,7 @@ public class Deal {
     private @Nullable EnergyClass energyClass;
     @Enumerated(EnumType.STRING)
     private @Nullable DealStatus status;
-    @Column(length = 1000)
+    @Column(length = 2048)
     private @Nullable String sourceUrl;
     private @Nullable LocalDate listedOn;
     private @Nullable LocalDate createdOn;

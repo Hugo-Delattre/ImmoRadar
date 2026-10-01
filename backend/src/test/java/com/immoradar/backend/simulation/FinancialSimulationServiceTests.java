@@ -53,17 +53,11 @@ class FinancialSimulationServiceTests {
     }
 
     @Test
-    void shouldProvideMultiRegimeTaxComparison() {
+    void shouldProvideMultiRegimeComparisonWithoutInventedBorrowerIncome() {
         var result = simulationService.simulate(request(TaxRegime.REEL_LMNP, "3.5"));
 
         assertThat(result.taxComparison()).hasSize(4);
         assertThat(result.taxComparison()).anyMatch(TaxComparisonItem::isRecommended);
-    }
-
-    @Test
-    void shouldNotInventADebtRatioWithoutHouseholdIncome() {
-        var result = simulationService.simulate(request(TaxRegime.REEL_LMNP, "3.5"));
-
         assertThat(result.debtEffortRatio()).isNull();
     }
 
@@ -92,15 +86,25 @@ class FinancialSimulationServiceTests {
     }
 
     @Test
-    void breakEvenRentShouldCancelTheFirstYearCashFlow() {
-        var result = simulationService.simulate(request(TaxRegime.MICRO_BIC, "3.5"));
-        var breakEvenDeal = sampleDeal();
-        breakEvenDeal.setMonthlyRent(result.breakEvenRent());
-        when(dealService.getEntity("deal-1")).thenReturn(breakEvenDeal);
+    void shouldNotInventInitialEquityForZeroDownpayment() {
+        var request = new SimulationRequest("deal-1", BigDecimal.ZERO, amount("3.5"), 20,
+                TaxRegime.REEL_LMNP, amount("30"), amount("4"), BigDecimal.ZERO,
+                amount("180"), amount("1.5"), amount("1.2"));
 
-        var atBreakEven = simulationService.simulate(request(TaxRegime.MICRO_BIC, "3.5"));
+        var result = simulationService.simulate(request);
 
-        assertThat(atBreakEven.monthlyCashFlow().abs()).isLessThan(amount("1.00"));
+        assertThat(result.internalRateOfReturn()).isNull();
+        assertThat(result.debtEffortRatio()).isNull();
+    }
+
+    @Test
+    void breakEvenRentShouldActuallyProduceNearZeroCashFlow() {
+        var deal = sampleDeal();
+        when(dealService.getEntity("deal-1")).thenReturn(deal);
+        var result = simulationService.simulate(request(TaxRegime.REEL_LMNP, "3.5"));
+        deal.setMonthlyRent(result.breakEvenRent());
+        var atBreakEven = simulationService.simulate(request(TaxRegime.REEL_LMNP, "3.5"));
+        assertThat(atBreakEven.monthlyCashFlow().abs()).isLessThanOrEqualTo(amount("0.02"));
     }
 
     @Test

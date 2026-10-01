@@ -19,6 +19,9 @@ import java.util.Locale;
  *   <li>Levier de négociation (1 pt) : baisse de prix déjà constatée ou annonce en ligne depuis longtemps.</li>
  *   <li>Énergie (1 pt) : classe DPE ; une passoire F ou G retire des points car sa location est ou sera interdite.</li>
  * </ul>
+ *
+ * <p>Un critère sans donnée (pas de référence DVF, DPE inconnu) rapporte 0 point au lieu d'une valeur neutre
+ * inventée : le score ne monte qu'avec des faits vérifiables.
  */
 public final class DealScoring {
 
@@ -90,7 +93,7 @@ public final class DealScoring {
 
     private static ScoreFactor marketFactor(@Nullable Double delta) {
         if (delta == null) {
-            return new ScoreFactor("market", "Prix vs marché", 1.5, 3, "Pas de référence de prix pour ce secteur.");
+            return new ScoreFactor("market", "Prix vs marché", 0, 3, "Critère non noté : aucune référence DVF fiable pour ce secteur.");
         }
         // +10 % au-dessus du marché : 0 pt ; 20 % en dessous : 3 pts
         var points = round(clamp((10 - delta) / 30 * 3, 0, 3));
@@ -136,7 +139,7 @@ public final class DealScoring {
 
     private static ScoreFactor energyFactor(@Nullable EnergyClass energy) {
         if (energy == null) {
-            return new ScoreFactor("energy", "DPE", 0.5, 1, "DPE non renseigné.");
+            return new ScoreFactor("energy", "DPE", 0, 1, "Critère non noté : DPE non renseigné.");
         }
         return switch (energy) {
             case A, B, C -> new ScoreFactor("energy", "DPE", 1, 1, "Classe " + energy + " : aucune contrainte de location.");

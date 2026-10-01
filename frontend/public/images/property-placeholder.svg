@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" role="img" aria-label="Illustration de bien immobilier">
+  <defs>
+    <linearGradient id="sky" x2="1" y2="1"><stop stop-color="#dce9e6"/><stop offset="1" stop-color="#f3f0e7"/></linearGradient>
+    <linearGradient id="wall" x2="0" y2="1"><stop stop-color="#78978d"/><stop offset="1" stop-color="#48675e"/></linearGradient>
+  </defs>
+  <rect width="960" height="600" fill="url(#sky)"/>
+  <circle cx="760" cy="128" r="66" fill="#d9ca86" opacity=".75"/>
+  <path d="M0 475Q250 410 480 474T960 450V600H0Z" fill="#b8cbb8"/>
+  <path d="M191 295L480 106l289 189v240H191Z" fill="url(#wall)"/>
+  <path d="M158 308 480 89l322 219" fill="none" stroke="#294d44" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M428 535V363h104v172" fill="#e3d3ac"/>
+  <rect x="267" y="348" width="91" height="90" rx="5" fill="#d5e8df"/>
+  <rect x="602" y="348" width="91" height="90" rx="5" fill="#d5e8df"/>
+  <path d="M312 348v90m335-90v90M267 393h91m244 0h91" stroke="#6d9186" stroke-width="7"/>
+  <path d="M0 533q234-38 430 0t530-12v79H0Z" fill="#749482"/>
+</svg>

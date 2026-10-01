@@ -49,8 +49,8 @@ public class FinancialSimulationService {
         var debtEffortRatio = debtEffortRatio(deal, request, monthlyDebtService);
 
         var projection = buildProjection(deal, request, loanAmount, monthlyMortgage, monthlyLoanInsurance);
-        var irr = calculateIrr(request, projection, notaryFees);
-        var npv = calculateNpv(request, projection, notaryFees);
+        var irr = calculateIrr(request, projection);
+        var npv = calculateNpv(request, projection);
 
         return new SimulationResponse(
                 money(totalProjectCost), money(loanAmount), money(monthlyMortgage), money(monthlyCashFlow),
@@ -58,7 +58,7 @@ public class FinancialSimulationService {
                 money(breakEvenRent), cashFlowStatus(monthlyCashFlow),
                 projection,
                 taxComparison, debtEffortRatio,
-                percent(irr), money(npv), money(monthlyLoanInsurance));
+                irr == null ? null : percent(irr), money(npv), money(monthlyLoanInsurance));
     }
 
     /**
@@ -116,14 +116,10 @@ public class FinancialSimulationService {
         return loanAmount.multiply(rate(insuranceRate)).divide(TWELVE, 8, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal calculateIrr(SimulationRequest request, List<ProjectionPoint> projection, BigDecimal notaryFees) {
-        if (projection == null || projection.isEmpty()) {
-            return BigDecimal.ZERO;
-        }
+    private BigDecimal calculateIrr(SimulationRequest request, List<ProjectionPoint> projection) {
+        if (projection.isEmpty() || request.downpayment().signum() == 0) return null;
         int n = projection.size();
-        double initialEquity = request.downpayment().signum() > 0
-                ? request.downpayment().doubleValue()
-                : (notaryFees.signum() > 0 ? notaryFees.doubleValue() : 1000.0);
+        double initialEquity = request.downpayment().doubleValue();
 
         double[] cf = new double[n + 1];
         for (int t = 1; t <= n; t++) {
@@ -164,17 +160,17 @@ public class FinancialSimulationService {
             }
             r = nextR;
         }
-        return BigDecimal.valueOf(r * 100.0);
+        double residual = -initialEquity;
+        for (int t = 1; t <= n; t++) residual += cf[t] / Math.pow(1.0 + r, t);
+        return Math.abs(residual) > 1.0 ? null : BigDecimal.valueOf(r * 100.0);
     }
 
-    private BigDecimal calculateNpv(SimulationRequest request, List<ProjectionPoint> projection, BigDecimal notaryFees) {
+    private BigDecimal calculateNpv(SimulationRequest request, List<ProjectionPoint> projection) {
         if (projection == null || projection.isEmpty()) {
             return BigDecimal.ZERO;
         }
         int n = projection.size();
-        double initialEquity = request.downpayment().signum() > 0
-                ? request.downpayment().doubleValue()
-                : (notaryFees.signum() > 0 ? notaryFees.doubleValue() : 1000.0);
+        double initialEquity = request.downpayment().doubleValue();
 
         double discountRate = 0.04; // 4% hurdle rate benchmark
         double npv = -initialEquity;
@@ -237,10 +233,10 @@ public class FinancialSimulationService {
                 case SCI_IS -> "SCI à l'IS";
             };
             var advantage = switch (regime) {
-                case REEL_LMNP -> "Amortissement bâti (85%) & déduction intégrale des travaux et intérêts";
-                case MICRO_BIC -> "Abattement forfaitaire simple de 50% sur les loyers bruts";
-                case NU -> "Régime forfaitaire (abattement 30%) avec imputation déficit foncier";
-                case SCI_IS -> "Taux réduit IS à 15% jusqu'à 42 500€ de bénéfice, capitalisation";
+                case REEL_LMNP -> "Hypothèse simplifiée d'amortissement et de déduction : à confirmer selon votre situation";
+                case MICRO_BIC -> "Hypothèse forfaitaire sur les loyers : vérifier votre éligibilité et le taux applicable";
+                case NU -> "Hypothèse micro-foncier, sans calcul de déficit foncier";
+                case SCI_IS -> "Hypothèse d'impôt société, hors fiscalité de distribution et de revente";
             };
 
             list.add(new TaxComparisonItem(

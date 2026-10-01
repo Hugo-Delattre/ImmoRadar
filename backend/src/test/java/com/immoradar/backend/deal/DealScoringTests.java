@@ -52,6 +52,15 @@ class DealScoringTests {
     }
 
     @Test
+    void unknownMarketOrEnergyEarnsNoPoints() {
+        var unknown = deal("120000", "1100");
+
+        assertThat(factor(unknown, "market").points()).isZero();
+        assertThat(factor(unknown, "market").detail()).startsWith("Critère non noté");
+        assertThat(factor(unknown, "energy").points()).isZero();
+    }
+
+    @Test
     void scoreStaysBetweenZeroAndTen() {
         var terrible = deal("400000", "600");
         terrible.setMarketDeltaPercent(40.0);

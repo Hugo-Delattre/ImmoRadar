@@ -10,7 +10,6 @@ import {
   DealFilters,
   DealSort,
   DealStatus,
-  DvfMarketAnalysis,
   EnergyClass,
   ProblemDetail,
   SimulationRequest,
@@ -43,13 +42,13 @@ const DEFAULT_FILTERS: DealFilters = {
 
 const EMPTY_DEAL_FORM: DealFormModel = {
   title: '',
-  price: 180000,
-  monthlyRent: 1350,
-  monthlyCharges: 110,
-  propertyTax: 950,
-  renovationCost: 12000,
+  price: 0,
+  monthlyRent: 0,
+  monthlyCharges: 0,
+  propertyTax: 0,
+  renovationCost: 0,
   location: '',
-  surface: 65,
+  surface: 0,
   propertyType: 'Apartment',
   description: '',
   imageUrl: '',
@@ -107,7 +106,6 @@ export class DealFinderComponent {
   protected readonly isExtractingUrl = signal(false);
   protected readonly extractUrlError = signal<string | null>(null);
   protected readonly extractSuccessMessage = signal<string | null>(null);
-  protected readonly extractWarnings = signal<string[]>([]);
 
   protected readonly newDealModel = signal<DealFormModel>({ ...EMPTY_DEAL_FORM });
   protected readonly newDealForm = form(this.newDealModel);
@@ -157,7 +155,8 @@ export class DealFinderComponent {
     insuranceAnnual: 180,
     rentGrowthRate: 1.5,
     propertyGrowthRate: 1.2,
-    monthlyNetIncome: 3500,
+    // No invented household: the HCSF ratio stays blank until the user enters an income.
+    monthlyNetIncome: 0,
     existingMonthlyDebt: 0,
     loanInsuranceRate: 0.3,
   });
@@ -167,7 +166,12 @@ export class DealFinderComponent {
       const deal = this.selectedDeal();
       if (!deal) return null;
       const values = this.simulationForm().value();
-      return { ...values, dealId: deal.id, loanTermYears: Number(values.loanTermYears) };
+      return {
+        ...values,
+        dealId: deal.id,
+        loanTermYears: Number(values.loanTermYears),
+        monthlyNetIncome: values.monthlyNetIncome && values.monthlyNetIncome > 0 ? values.monthlyNetIncome : null,
+      };
   });
 
   protected readonly simulationResource = rxResource({
@@ -183,29 +187,17 @@ export class DealFinderComponent {
 
   protected readonly Math = Math;
 
-  protected marketStatusBadge(status: DvfMarketAnalysis['marketStatus']): { text: string; cssClass: string } {
-    switch (status) {
-      case 'SOUS_EVALUE':
-        return { text: '⚡ Sous le prix du marché', cssClass: 'status-undervalued' };
-      case 'SUREVALUE':
-        return { text: '⚠️ Au-dessus du marché', cssClass: 'status-overvalued' };
-      case 'ALIGNE':
-      default:
-        return { text: '✓ Aligné sur le marché', cssClass: 'status-aligned' };
-    }
-  }
-
   protected readonly globalMetrics = computed(() => {
     const deals = this.deals();
     if (deals.length === 0) {
-      return { avgPrice: 0, avgYield: 0, bestScore: 0, favorites: 0 };
+      return { avgPrice: 0, avgYield: 0, bestYield: 0, favorites: 0 };
     }
     return {
       avgPrice: Math.round(deals.reduce((sum, deal) => sum + deal.price, 0) / deals.length),
       avgYield: Number(
         (deals.reduce((sum, deal) => sum + deal.grossYield, 0) / deals.length).toFixed(1),
       ),
-      bestScore: Math.max(...deals.map((deal) => deal.opportunityScore)),
+      bestYield: Math.max(...deals.map((deal) => deal.grossYield)),
       favorites: deals.filter((deal) => deal.favorite).length,
     };
   });
@@ -341,12 +333,11 @@ export class DealFinderComponent {
     this.importUrl.set('');
     this.extractUrlError.set(null);
     this.extractSuccessMessage.set(null);
-    this.extractWarnings.set([]);
     this.isCreateModalOpen.set(true);
   }
 
-  protected async extractListing(customUrl?: string): Promise<void> {
-    const url = (customUrl ?? this.importUrl()).trim();
+  protected async extractListing(): Promise<void> {
+    const url = this.importUrl().trim();
     if (!url) {
       this.extractUrlError.set('Colle une URL d’annonce valide pour l’importer.');
       return;
@@ -355,50 +346,34 @@ export class DealFinderComponent {
     this.isExtractingUrl.set(true);
     this.extractUrlError.set(null);
     this.extractSuccessMessage.set(null);
-    this.extractWarnings.set([]);
 
     try {
       const extracted = await this.dealService.extractListingFromUrl(url);
       // Only overwrite what the listing actually provided; missing values stay editable.
       this.newDealModel.update((model) => ({
         ...model,
-        title: extracted.title ?? model.title,
-        price: extracted.price ?? model.price,
+        title: extracted.title,
+        price: extracted.price,
         monthlyRent: extracted.monthlyRent ?? model.monthlyRent,
-        surface: extracted.surface ?? model.surface,
+        surface: extracted.surface,
         location: extracted.location ?? model.location,
-        propertyType: extracted.propertyType ?? model.propertyType,
+        propertyType: extracted.propertyType,
         renovationCost: extracted.renovationCost ?? model.renovationCost,
         monthlyCharges: extracted.monthlyCharges ?? model.monthlyCharges,
         propertyTax: extracted.propertyTax ?? model.propertyTax,
         imageUrl: extracted.imageUrl ?? model.imageUrl,
         description: extracted.description ?? model.description,
-        sourceUrl: extracted.demo ? model.sourceUrl : extracted.sourceUrl,
+        sourceUrl: extracted.sourceUrl,
       }));
-      const count = extracted.extractedFields.length;
       this.extractSuccessMessage.set(
-        count === 0
-          ? `Rien n’a pu être lu sur ${extracted.platform}.`
-          : `${count} champ${count > 1 ? 's' : ''} lu${count > 1 ? 's' : ''} sur ${extracted.platform}${extracted.demo ? ' (démo)' : ''}.`,
+        `Prix et surface repérés sur ${extracted.platform}. Vérifie-les, puis renseigne le loyer, la localisation, les charges et le DPE : ils ne sont pas estimés automatiquement.`,
       );
-      this.extractWarnings.set(extracted.warnings);
     } catch (error: unknown) {
       const problem = error instanceof HttpErrorResponse ? (error.error as ProblemDetail | null) : null;
-      this.extractUrlError.set(problem?.detail ?? 'Impossible de lire cette annonce. Remplis les champs manuellement.');
+      this.extractUrlError.set(problem?.detail ?? 'Annonce inaccessible ou incomplète. Renseigne-la manuellement.');
     } finally {
       this.isExtractingUrl.set(false);
     }
-  }
-
-  protected fillDemoListing(preset: 'leboncoin' | 'seloger' | 'pap'): void {
-    const urls = {
-      leboncoin: 'https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816',
-      seloger: 'https://www.seloger.com/annonces/achat/appartement/paris-11eme-75/studio-renove',
-      pap: 'https://www.pap.fr/annonces/appartement-bordeaux-centre-t2',
-    };
-    const url = urls[preset];
-    this.importUrl.set(url);
-    this.extractListing(url);
   }
 
   protected closeCreateModal(): void {
@@ -415,6 +390,12 @@ export class DealFinderComponent {
     if (!value.title.trim()) localErrors['title'] = 'Ajoute un titre clair pour identifier le bien.';
     if (!value.location.trim()) localErrors['location'] = 'La localisation est obligatoire.';
     if (value.price <= 0) localErrors['price'] = 'Le prix doit être supérieur à zéro.';
+    if (value.monthlyRent <= 0) localErrors['monthlyRent'] = 'Renseigne un loyer vérifié ou une hypothèse explicite.';
+    if (value.surface <= 0) localErrors['surface'] = 'La surface doit être supérieure à zéro.';
+    if (value.monthlyCharges < 0 || value.propertyTax < 0 || value.renovationCost < 0) {
+      this.submitError.set('Les charges, la taxe foncière et les travaux ne peuvent pas être négatifs.');
+      return;
+    }
     if (Object.keys(localErrors).length > 0) {
       this.submitFieldErrors.set(localErrors);
       return;
