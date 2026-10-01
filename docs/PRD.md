@@ -13,12 +13,14 @@ Mise à jour : 1 octobre 2026. Objectif : aider à **présélectionner** des inv
 - [x] Loyer d'équilibre calculé en réévaluant vacance, frais de gestion et impôt simplifié à chaque loyer candidat.
 - [x] Aucun taux d'endettement calculé sans revenus de l'emprunteur ; aucun TRI inventé lorsque l'apport initial est nul.
 - [x] README et interface explicitent les limites des cinq exemples fictifs et des simulations fiscales.
+- [x] Dossier de contrôles persisté par bien : dix points (prix, surface, loyer, charges, taxe, travaux, DPE, copropriété, demande locale, disponibilité), statuts observé/estimé/justificatif, notes, liens HTTPS et date. Une estimation ne complète pas le dossier ; un chiffre changé ou une disponibilité contrôlée il y a plus de 30 jours impose une actualisation. Tests HTTP avec base isolée et tests d'interface déterministes.
 
 ## Priorité P0 — réellement utile pour chercher des biens
 
 - [ ] **Données de référence locative** : intégrer une source de loyers comparables autorisée, avec granularité, millésime et volume ; ne pas déduire un loyer du seul prix de vente. Ajouter loyer bas/central/haut et scénario prudent.
 - [ ] **Qualité des annonces** : importer via une source contractuelle/API ou proposer une capture assistée et vérifiable ; gérer doublons, liens morts, date de publication et historique des changements de prix. Les portails peuvent bloquer l'extraction HTML.
-- [ ] **Confiance du dossier** : distinguer chaque champ observé, saisi ou estimé ; afficher les pièces manquantes (DPE, copropriété, taxe foncière, charges récupérables, travaux, vacance locale). Interdire le badge « pépite vérifiée » tant que les données critiques ne sont pas justifiées.
+- [x] **Confiance du dossier — suivi déclaratif** : distinguer les données observées, estimées et documentées ; afficher les points encore à justifier et conserver les références. Aucun badge « pépite vérifiée » : même un dossier complet reste une déclaration utilisateur, pas une certification.
+- [ ] **Confiance du dossier — preuves contrôlées** : joindre les documents, historiser les révisions, structurer les références locatives et les diagnostics, vérifier les justificatifs avec une revue humaine. Le compteur actuel ne contrôle pas leur contenu et le PDF ne reprend pas encore ces références.
 - [ ] **Comparables de vente plus fins** : utiliser les transactions individuelles officielles DVF/DVF+ ou une source sous contrat, nettoyer les outliers, rapprocher type/surface/date/secteur et afficher un intervalle de confiance. L'agrégat communal actuel n'est qu'un repère.
 - [ ] **Tests full-stack reproductibles en CI** : créer un bien via le navigateur avec le backend et une base isolée, le retrouver après redémarrage et comparer les résultats API/PDF. Le smoke test live actuel dépend du réseau et d'un exemple préchargé ; il n'est pas ce test de CI.
 

@@ -2,77 +2,198 @@ import { expect, test } from '@playwright/test';
 
 // Deterministic UI contract tests. The backend's financial rules are tested in Java.
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/deals?**', async route => {
+  const evidence = new Map<string, Record<string, unknown>>();
+  await page.route('**/api/deals/*/evidence{,/**}', async (route) => {
+    const path = new URL(route.request().url()).pathname.split('/');
+    const dealId = path[3];
+    if (route.request().method() === 'PUT') {
+      evidence.set(`${dealId}:${path[5]}`, route.request().postDataJSON());
+    }
+    const checks = [
+      ['PRICE', 'Prix'],
+      ['SURFACE', 'Surface'],
+      ['RENT', 'Loyer'],
+      ['CHARGES', 'Charges'],
+      ['PROPERTY_TAX', 'Taxe foncière'],
+      ['RENOVATION', 'Travaux'],
+      ['DPE', 'DPE'],
+      ['COOWNERSHIP', 'Copropriété'],
+      ['RENTAL_DEMAND', 'Demande locative'],
+      ['LISTING_AVAILABILITY', 'Disponibilité de l’annonce'],
+    ].map(([field, label]) => {
+      const saved = evidence.get(`${dealId}:${field}`);
+      return {
+        field,
+        label,
+        guidance: 'Conserver une référence vérifiable.',
+        currentValue: '',
+        status: 'UNVERIFIED',
+        sourceUrl: '',
+        note: '',
+        checkedOn: null,
+        updatedAt: null,
+        ...saved,
+        stale: false,
+        complete: saved?.['status'] === 'DOCUMENTED',
+      };
+    });
+    await route.fulfill({
+      json: {
+        dealId,
+        checks,
+        requiredCount: 10,
+        documentedCount: checks.filter((check) => check.complete).length,
+        readyForReview: false,
+      },
+    });
+  });
+  await page.route('**/api/deals?**', async (route) => {
     const query = new URL(route.request().url()).searchParams;
     const pageIndex = Number(query.get('page'));
     const city = query.get('location') || 'Lyon';
-    await route.fulfill({ json: {
-      page: pageIndex, size: 6, totalPages: 2, totalElements: 7,
-      content: [{ id: String(pageIndex + 1), title: `Appartement ${city} ${pageIndex + 1}`, price: 180000,
-        monthlyRent: 1200, monthlyCharges: 100, propertyTax: 800, renovationCost: 10000,
-        location: city, surface: 60, propertyType: 'Apartment', description: 'Proche des transports',
-        opportunityScore: 8, imageUrl: '', favorite: false, grossYield: 8,
-        monthlyOperatingIncome: 1033, pricePerSquareMeter: 3000 }],
-    } });
+    await route.fulfill({
+      json: {
+        page: pageIndex,
+        size: 6,
+        totalPages: 2,
+        totalElements: 7,
+        content: [
+          {
+            id: String(pageIndex + 1),
+            title: `Appartement ${city} ${pageIndex + 1}`,
+            price: 180000,
+            monthlyRent: 1200,
+            monthlyCharges: 100,
+            propertyTax: 800,
+            renovationCost: 10000,
+            location: city,
+            surface: 60,
+            propertyType: 'Apartment',
+            description: 'Proche des transports',
+            opportunityScore: 8,
+            imageUrl: '',
+            favorite: false,
+            grossYield: 8,
+            monthlyOperatingIncome: 1033,
+            pricePerSquareMeter: 3000,
+          },
+        ],
+      },
+    });
   });
-  await page.route('**/api/simulations', async route => {
+  await page.route('**/api/simulations', async (route) => {
     const request = route.request().postDataJSON();
-    await route.fulfill({ json: {
-      totalProjectCost: 200000, loanAmount: 170000, monthlyMortgage: 850,
-      monthlyCashFlow: request.downpayment / 100, grossYield: 7.2, netYield: 5.5,
-      taxAnnual: 500, annualOperatingExpenses: 2200, breakEvenRent: 1100, cashFlowStatus: 'POSITIF',
-      projection: Array.from({ length: request.loanTermYears }, (_, i) => ({
-        year: i + 1, annualCashFlow: 1200, cumulativeCashFlow: (i + 1) * 1200,
-        remainingLoan: Math.max(0, 170000 - (i + 1) * 8500), estimatedPropertyValue: 180000,
-        netWorth: i === 0 ? -1000 : i * 10000,
-      })),
-      taxComparison: [
-        { regime: 'REEL_LMNP', label: 'LMNP Réel', annualTax: 250, monthlyCashFlow: 380, netYield: 6.2, isRecommended: true, advantage: 'Amortissement bâti' },
-        { regime: 'MICRO_BIC', label: 'LMNP Micro-BIC', annualTax: 750, monthlyCashFlow: 338, netYield: 5.8, isRecommended: false, advantage: 'Abattement 50%' },
-        { regime: 'NU', label: 'Location Nue', annualTax: 950, monthlyCashFlow: 320, netYield: 5.5, isRecommended: false, advantage: 'Micro-foncier' },
-        { regime: 'SCI_IS', label: "SCI à l'IS", annualTax: 450, monthlyCashFlow: 360, netYield: 6.0, isRecommended: false, advantage: 'Taux 15%' },
-      ],
-      debtEffortRatio: null,
-      internalRateOfReturn: 10.4,
-      netPresentValue: 48200,
-    } });
+    await route.fulfill({
+      json: {
+        totalProjectCost: 200000,
+        loanAmount: 170000,
+        monthlyMortgage: 850,
+        monthlyCashFlow: request.downpayment / 100,
+        grossYield: 7.2,
+        netYield: 5.5,
+        taxAnnual: 500,
+        annualOperatingExpenses: 2200,
+        breakEvenRent: 1100,
+        cashFlowStatus: 'POSITIF',
+        projection: Array.from({ length: request.loanTermYears }, (_, i) => ({
+          year: i + 1,
+          annualCashFlow: 1200,
+          cumulativeCashFlow: (i + 1) * 1200,
+          remainingLoan: Math.max(0, 170000 - (i + 1) * 8500),
+          estimatedPropertyValue: 180000,
+          netWorth: i === 0 ? -1000 : i * 10000,
+        })),
+        taxComparison: [
+          {
+            regime: 'REEL_LMNP',
+            label: 'LMNP Réel',
+            annualTax: 250,
+            monthlyCashFlow: 380,
+            netYield: 6.2,
+            isRecommended: true,
+            advantage: 'Amortissement bâti',
+          },
+          {
+            regime: 'MICRO_BIC',
+            label: 'LMNP Micro-BIC',
+            annualTax: 750,
+            monthlyCashFlow: 338,
+            netYield: 5.8,
+            isRecommended: false,
+            advantage: 'Abattement 50%',
+          },
+          {
+            regime: 'NU',
+            label: 'Location Nue',
+            annualTax: 950,
+            monthlyCashFlow: 320,
+            netYield: 5.5,
+            isRecommended: false,
+            advantage: 'Micro-foncier',
+          },
+          {
+            regime: 'SCI_IS',
+            label: "SCI à l'IS",
+            annualTax: 450,
+            monthlyCashFlow: 360,
+            netYield: 6.0,
+            isRecommended: false,
+            advantage: 'Taux 15%',
+          },
+        ],
+        debtEffortRatio: null,
+        internalRateOfReturn: 10.4,
+        netPresentValue: 48200,
+      },
+    });
   });
-  await page.route('**/api/market/**', async route => {
-    await route.fulfill({ json: {
-      available: true,
-      location: 'Lyon (69)',
-      codeInsee: '69123',
-      propertyCategory: 'Appartement',
-      dealPricePerSquareMeter: 3000,
-      medianPricePerSquareMeter: 3500,
-      deltaPercentage: -14.3,
-      comparableCount: 342,
-      referenceYear: 2025,
-      reliability: 'Forte',
-      sourceUrl: 'https://foncierdata.fr/api/v1/commune/69123.json',
-      methodologyUrl: 'https://foncierdata.fr/methodologie',
-      recentSales: [{ date: '2025-12-30', propertyCategory: 'Appartement', surface: 61,
-        price: 181000, pricePerSquareMeter: 2967 }],
-      recentSalesSourceUrl: 'https://foncierdata.fr/api/v1/commune/69123/transactions.json',
-      notice: 'Repère communal, pas une estimation du bien.',
-    } });
+  await page.route('**/api/market/**', async (route) => {
+    await route.fulfill({
+      json: {
+        available: true,
+        location: 'Lyon (69)',
+        codeInsee: '69123',
+        propertyCategory: 'Appartement',
+        dealPricePerSquareMeter: 3000,
+        medianPricePerSquareMeter: 3500,
+        deltaPercentage: -14.3,
+        comparableCount: 342,
+        referenceYear: 2025,
+        reliability: 'Forte',
+        sourceUrl: 'https://foncierdata.fr/api/v1/commune/69123.json',
+        methodologyUrl: 'https://foncierdata.fr/methodologie',
+        recentSales: [
+          {
+            date: '2025-12-30',
+            propertyCategory: 'Appartement',
+            surface: 61,
+            price: 181000,
+            pricePerSquareMeter: 2967,
+          },
+        ],
+        recentSalesSourceUrl: 'https://foncierdata.fr/api/v1/commune/69123/transactions.json',
+        notice: 'Repère communal, pas une estimation du bien.',
+      },
+    });
   });
-  await page.route('**/api/listings/extract', async route => {
-    await route.fulfill({ json: {
-      title: 'Maison 3 pièces 74 m²',
-      price: 180000,
-      monthlyRent: null,
-      surface: 74,
-      location: null,
-      propertyType: 'House',
-      renovationCost: null,
-      monthlyCharges: null,
-      propertyTax: null,
-      imageUrl: null,
-      description: 'Maison 3 pièces 74 m² avec 2 chambres, terrasse de 40 m² et garage.',
-      sourceUrl: 'https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816',
-      platform: 'Leboncoin',
-    } });
+  await page.route('**/api/listings/extract', async (route) => {
+    await route.fulfill({
+      json: {
+        title: 'Maison 3 pièces 74 m²',
+        price: 180000,
+        monthlyRent: null,
+        surface: 74,
+        location: null,
+        propertyType: 'House',
+        renovationCost: null,
+        monthlyCharges: null,
+        propertyTax: null,
+        imageUrl: null,
+        description: 'Maison 3 pièces 74 m² avec 2 chambres, terrasse de 40 m² et garage.',
+        sourceUrl: 'https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816',
+        platform: 'Leboncoin',
+      },
+    });
   });
 });
 
@@ -87,9 +208,12 @@ test('paginates and returns to page one after a new search', async ({ page }) =>
 });
 
 test('updates the simulation, explores every year and downloads a report', async ({ page }) => {
-  await page.route('**/api/reports/investment', route => route.fulfill({
-    contentType: 'application/pdf', body: '%PDF-1.7\nUI download fixture',
-  }));
+  await page.route('**/api/reports/investment', (route) =>
+    route.fulfill({
+      contentType: 'application/pdf',
+      body: '%PDF-1.7\nUI download fixture',
+    }),
+  );
   await page.goto('/');
   await expect(page.locator('.cashflow')).toContainText('300');
   await page.getByLabel('Apport personnel').fill('50000');
@@ -108,7 +232,7 @@ test('updates the simulation, explores every year and downloads a report', async
 });
 
 test('shows a recoverable error when the API fails', async ({ page }) => {
-  await page.route('**/api/deals?**', route => route.fulfill({ status: 503, json: {} }));
+  await page.route('**/api/deals?**', (route) => route.fulfill({ status: 503, json: {} }));
   await page.goto('/');
   await expect(page.getByText('Connexion interrompue')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Réessayer', exact: true })).toBeVisible();
@@ -126,7 +250,11 @@ test('displays sourced communal market data without negotiation claims', async (
 
 test('displays tax scenarios without fictitious borrowing capacity', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Capacité bancaire non évaluée sans revenus et crédits existants.', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText('Capacité bancaire non évaluée sans revenus et crédits existants.', {
+      exact: false,
+    }),
+  ).toBeVisible();
   await expect(page.getByText('Comparatif indicatif des régimes')).toBeVisible();
   await expect(page.getByText('LMNP Réel')).toBeVisible();
   await expect(page.getByText('Cash-flow simulé max')).toBeVisible();
@@ -136,11 +264,76 @@ test('extracts listing via URL in 1 click and populates creation form', async ({
   await page.goto('/');
   await page.getByRole('button', { name: 'Ajouter un bien' }).click();
   await expect(page.getByText('Importer directement depuis une annonce')).toBeVisible();
-  await page.getByPlaceholder('Ex. https://www.leboncoin.fr/ad/ventes_immobilieres/...').fill('https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816');
+  await page
+    .getByPlaceholder('Ex. https://www.leboncoin.fr/ad/ventes_immobilieres/...')
+    .fill('https://www.leboncoin.fr/ad/ventes_immobilieres/3271114816');
   await page.getByRole('button', { name: 'Analyser l’annonce' }).click();
-  await expect(page.getByText('Prix et surface repérés dans la page.', { exact: false })).toBeVisible();
-  await expect(page.getByPlaceholder('Ex. T3 lumineux proche gare')).toHaveValue('Maison 3 pièces 74 m²');
+  await expect(
+    page.getByText('Prix et surface repérés dans la page.', { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByPlaceholder('Ex. T3 lumineux proche gare')).toHaveValue(
+    'Maison 3 pièces 74 m²',
+  );
   await expect(page.getByPlaceholder('Ex. Angers (49)')).toHaveValue('');
 });
 
+test('records a documented rent reference and reloads the dossier', async ({ page }) => {
+  await page.goto('/');
+  const dossier = page.getByRole('region', { name: 'Fiabilité du dossier' });
+  await expect(dossier).toContainText('0/10 documentés');
+  await dossier.getByRole('button', { name: 'Documenter Loyer', exact: true }).click();
+  await dossier.getByLabel('Nature de la donnée').selectOption('DOCUMENTED');
+  await dossier
+    .getByLabel('Note et référence du justificatif')
+    .fill('Trois références locales, surfaces et dates conservées.');
+  await dossier.getByLabel('Lien source (facultatif)').fill('https://example.com/references');
+  await dossier.getByRole('button', { name: 'Enregistrer le contrôle' }).click();
+  await expect(dossier).toContainText('1/10 documentés');
+  await expect(dossier.getByRole('status')).toContainText('Loyer : contrôle enregistré.');
+  await page.reload();
+  await expect(dossier).toContainText('1/10 documentés');
+  await expect(dossier.getByRole('link', { name: 'Consulter la référence' })).toHaveAttribute(
+    'href',
+    'https://example.com/references',
+  );
+});
 
+test('does not count an estimate as documented and resets the editor on selection', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const dossier = page.getByRole('region', { name: 'Fiabilité du dossier' });
+  await dossier.getByRole('button', { name: 'Documenter Loyer', exact: true }).click();
+  await dossier.getByLabel('Nature de la donnée').selectOption('ESTIMATED');
+  await dossier.getByLabel('Note et référence du justificatif').fill('Hypothèse non confirmée.');
+  await dossier.getByRole('button', { name: 'Enregistrer le contrôle' }).click();
+  await expect(dossier).toContainText('Hypothèse non confirmée.');
+  await expect(dossier).toContainText('0/10 documentés');
+  await dossier.getByRole('button', { name: 'Documenter Loyer', exact: true }).click();
+  await page.getByRole('button', { name: 'Suivant', exact: true }).click();
+  await expect(page.getByText('Page 2 sur 2')).toBeVisible();
+  await expect(dossier.getByRole('form')).not.toBeVisible();
+  await expect(dossier).not.toContainText('Hypothèse non confirmée.');
+});
+
+test('keeps evidence edits available after a failed save', async ({ page }) => {
+  await page.route('**/api/deals/*/evidence/RENT', (route) =>
+    route.fulfill({
+      status: 503,
+      json: { detail: 'Enregistrement temporairement indisponible.' },
+    }),
+  );
+  await page.goto('/');
+  const dossier = page.getByRole('region', { name: 'Fiabilité du dossier' });
+  await dossier.getByRole('button', { name: 'Documenter Loyer', exact: true }).click();
+  await dossier.getByLabel('Nature de la donnée').selectOption('DOCUMENTED');
+  await dossier.getByLabel('Note et référence du justificatif').fill('Référence à conserver.');
+  await dossier.getByRole('button', { name: 'Enregistrer le contrôle' }).click();
+  await expect(dossier.getByRole('alert')).toHaveText(
+    'Enregistrement temporairement indisponible.',
+  );
+  await expect(dossier.getByLabel('Note et référence du justificatif')).toHaveValue(
+    'Référence à conserver.',
+  );
+  await expect(dossier).toContainText('0/10 documentés');
+});

@@ -1,0 +1,147 @@
+<section
+  class="evidence-card"
+  aria-label="Fiabilité du dossier"
+  [attr.aria-busy]="evidence.isLoading()"
+>
+  <header>
+    <div>
+      <span class="eyebrow">Avant de retenir ce bien</span>
+      <h3>Fiabilité du dossier</h3>
+    </div>
+    @if (evidence.hasValue()) {
+      <span class="completion" [class.ready]="evidence.value().readyForReview"
+        >{{ evidence.value().documentedCount }}/{{
+          evidence.value().requiredCount
+        }}
+        documentés</span
+      >
+    }
+  </header>
+  @if (evidence.isLoading()) {
+    <p class="feedback" role="status">Chargement des contrôles…</p>
+  } @else if (evidence.error()) {
+    <p class="feedback error" role="alert">Impossible de charger les justificatifs.</p>
+    <button type="button" (click)="evidence.reload()">Réessayer</button>
+  } @else if (evidence.hasValue()) {
+    <p class="intro">
+      {{
+        evidence.value().readyForReview
+          ? 'Dossier documenté : tu peux préparer une revue avec un professionnel.'
+          : 'Complète les références pour identifier les chiffres encore à confirmer.'
+      }}
+      Ces contrôles sont déclarés par toi ; ils ne certifient ni le bien ni sa rentabilité.
+    </p>
+    <div class="progress-track" aria-hidden="true">
+      <span
+        [style.width.%]="(100 * evidence.value().documentedCount) / evidence.value().requiredCount"
+      ></span>
+    </div>
+    <ul class="check-list">
+      @for (check of evidence.value().checks; track check.field) {
+        <li [class.complete]="check.complete" [class.stale]="check.stale">
+          <div>
+            <strong>{{ check.label }}</strong>
+            @if (check.currentValue) {
+              <span class="value">{{ formatValue(check) }}</span>
+            }
+            <small
+              >{{ check.stale ? 'À actualiser' : statusLabels[check.status] }}
+              @if (check.checkedOn) {
+                · {{ check.checkedOn | date: 'dd/MM/yyyy' }}
+              }
+            </small>
+            @if (check.note) {
+              <p>{{ check.note }}</p>
+            }
+            @if (check.sourceUrl) {
+              <a [href]="check.sourceUrl" target="_blank" rel="noopener noreferrer"
+                >Consulter la référence ↗</a
+              >
+            }
+          </div>
+          <button
+            type="button"
+            (click)="edit(check)"
+            [disabled]="saving()"
+            [attr.aria-label]="'Documenter ' + check.label"
+            [attr.aria-expanded]="editing()?.field === check.field"
+          >
+            {{ check.complete ? 'Modifier' : 'Documenter' }}
+          </button>
+        </li>
+      }
+    </ul>
+    @if (editing(); as check) {
+      <form
+        class="evidence-editor"
+        (submit)="save(); $event.preventDefault()"
+        aria-label="Documenter un point de contrôle"
+      >
+        <h4>{{ check.label }}</h4>
+        <p class="guidance">{{ check.guidance }}</p>
+        @if (check.stale) {
+          <p class="guidance">
+            Le chiffre a changé ou le contrôle de disponibilité a plus de 30 jours. Vérifie la
+            référence avant de le confirmer.
+          </p>
+        }
+        <div class="editor-grid">
+          <label
+            ><span>Nature de la donnée</span
+            ><select [formField]="editForm.status">
+              <option value="UNVERIFIED">À vérifier</option>
+              <option value="OBSERVED">Observé dans une annonce</option>
+              <option value="ESTIMATED">Hypothèse estimée</option>
+              <option value="DOCUMENTED">Justificatif renseigné</option>
+              @if (check.field === 'COOWNERSHIP') {
+                <option value="NOT_APPLICABLE">Hors copropriété (à expliquer)</option>
+              }
+            </select></label
+          >
+          <label
+            ><span>Date du contrôle</span><input type="date" [formField]="editForm.checkedOn" />
+            @if (editForm.checkedOn().touched()) {
+              @for (error of editForm.checkedOn().errors(); track error.kind) {
+                <small class="error">{{ error.message }}</small>
+              }
+            }
+          </label>
+          <label class="full"
+            ><span>Note et référence du justificatif</span
+            ><textarea
+              rows="3"
+              [formField]="editForm.note"
+              placeholder="Ex. Avis 2025 reçu le 01/10, devis entreprise, liens et caractéristiques des loyers comparables…"
+            ></textarea>
+            @if (editForm.note().touched()) {
+              @for (error of editForm.note().errors(); track error.kind) {
+                <small class="error">{{ error.message }}</small>
+              }
+            }
+          </label>
+          <label class="full"
+            ><span>Lien source (facultatif)</span
+            ><input type="url" [formField]="editForm.sourceUrl" placeholder="https://…" />
+            @if (editForm.sourceUrl().touched()) {
+              @for (error of editForm.sourceUrl().errors(); track error.kind) {
+                <small class="error">{{ error.message }}</small>
+              }
+            }
+          </label>
+        </div>
+        @if (saveError()) {
+          <p class="feedback error" role="alert">{{ saveError() }}</p>
+        }
+        <footer>
+          <button type="button" (click)="editing.set(null)" [disabled]="saving()">Annuler</button
+          ><button class="save-button" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Enregistrement…' : 'Enregistrer le contrôle' }}
+          </button>
+        </footer>
+      </form>
+    }
+    @if (savedMessage()) {
+      <p class="feedback" role="status">{{ savedMessage() }}</p>
+    }
+  }
+</section>

@@ -14,6 +14,7 @@ ImmoRadar est un cockpit local d'analyse d'investissements immobiliers : catalog
 - [x] Simulation de crédit, charges, vacance, cash-flow et projections selon les hypothèses saisies ; loyer d'équilibre recalculé avec charges variables et fiscalité simulée.
 - [x] Comparaison **indicative** de quatre hypothèses fiscales, TRI et VAN bruts, export PDF d'aide à la décision.
 - [x] Tests Java, tests Angular et tests Playwright à API simulée.
+- [x] Dossier de fiabilité par bien : dix contrôles persistés, observations séparées des estimations, notes, références HTTPS et dates. Le compteur reflète tes justificatifs déclarés, pas une vérification indépendante.
 - [ ] Collecte automatique fiable et durable des annonces : dépend de l'accès autorisé aux portails ou d'une autre source contractuelle.
 - [ ] Estimation du loyer par comparables vérifiés, assurance emprunteur, frais de cession, plus-value, fiscalité personnelle et capacité bancaire.
 - [ ] Authentification, isolation des données utilisateurs, migrations de base et tests navigateur full-stack en CI.
@@ -25,8 +26,9 @@ Les cinq biens chargés au démarrage sont des **exemples fictifs**. Leur prix, 
 1. Démarrer l'application puis filtrer le catalogue et inspecter un exemple.
 2. Ajouter un **vrai bien** via le formulaire. Coller éventuellement l'URL source : si les métadonnées sont accessibles, elles préremplissent uniquement les champs observés. Compléter le loyer, les charges, la taxe, les travaux et la localisation après vérification.
 3. Lire le comparatif communal : année, nombre de transactions, ventes récentes et liens vers les JSON sources. « Indisponible » est un résultat normal si l'échantillon n'est pas suffisant ou si la source externe ne répond pas.
-4. Faire varier l'apport, le taux et les hypothèses. Le cash-flow et le loyer d'équilibre sont recalculés côté serveur.
-5. Télécharger le PDF, puis expliquer ses limites : fiscalité simplifiée, revente brute, absence de validation de la capacité d'emprunt.
+4. Dans « Fiabilité du dossier », renseigner les références et dates de contrôle. Seuls les justificatifs renseignés (ou une copropriété explicitement non applicable) complètent le dossier. Une estimation reste à confirmer ; la disponibilité est à recontrôler après 30 jours. Il s'agit d'une règle de fraîcheur du produit, pas d'une norme réglementaire.
+5. Faire varier l'apport, le taux et les hypothèses. Le cash-flow et le loyer d'équilibre sont recalculés côté serveur.
+6. Télécharger le PDF, puis expliquer ses limites : fiscalité simplifiée, revente brute, absence de validation de la capacité d'emprunt. Les notes de justificatifs restent dans l'interface et ne sont pas encore incluses dans le PDF.
 
 L'architecture Angular (signals, Signal Forms, ressources, états d'erreur) est expliquée dans [le guide Angular](docs/ANGULAR_ARCHITECTURE.md). Les priorités restantes sont dans [la roadmap](docs/PRD.md).
 

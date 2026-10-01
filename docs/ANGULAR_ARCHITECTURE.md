@@ -51,3 +51,13 @@ Un test navigateur avec API simulée n'est pas un test full-stack. Le prochain n
 Le composant de page contient encore trop de responsabilités : formulaire de création, filtres et simulation sont de bonnes prochaines extractions. Les Signal Forms existent, mais leurs schémas de validation doivent être complétés. La modale doit gérer le focus, sa restitution et le clavier. La localisation pourrait être temporisée pour limiter les requêtes pendant la saisie. Les statistiques affichées sont celles de la page courante, pas des agrégats globaux.
 
 Exercice conseillé : extraire le formulaire de création avec un input d'état et un output de requête validée, puis tester qu'un prix négatif empêche la soumission. Garder la persistance dans le parent ou un service de fonctionnalité, pas dans un composant purement visuel.
+
+## 6. Un composant de fonctionnalité : les justificatifs
+
+Lire `features/deal-finder/components/deal-evidence/`, puis `core/services/deal-evidence.ts` et `core/models/evidence.model.ts`. Ce composant n'est pas purement visuel : il porte un cas d'usage autonome, charger et enregistrer les contrôles du bien fourni par `input.required<string>()`. La page ne connaît pas le formulaire interne.
+
+`rxResource` recharge les contrôles quand l'identifiant change et annule la lecture précédente. Les `linkedSignal` remettent l'éditeur et les messages à zéro sur changement de bien. Le modèle du formulaire dépend du contrôle sélectionné ; les Signal Forms valident la note, la date et le lien HTTPS. Le backend valide aussi ces contraintes et décide quels contrôles comptent : on ne fait pas confiance au compteur calculé dans le navigateur.
+
+Une écriture n'est pas annulée à la navigation. La méthode `save` capture donc l'identifiant avant l'appel et vérifie qu'il est toujours sélectionné avant d'appliquer la réponse. En cas d'échec, le texte saisi reste disponible. Un test Playwright vérifie la sauvegarde/relecture avec API simulée, un autre les estimations et le changement de sélection, un troisième l'erreur sans perte de saisie. Les tests Java HTTP vérifient séparément la persistance réelle sur une base SQLite en mémoire isolée.
+
+Le compteur est volontairement nommé « documentés », pas « certifiés ». Les changements de chiffres invalident les références associées ; la disponibilité expire après 30 jours. Les documents eux-mêmes ne sont pas téléversés : cette étape et leur revue restent dans la roadmap.
