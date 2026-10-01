@@ -1,6 +1,5 @@
 package com.immoradar.backend.market;
 
-import com.immoradar.backend.deal.DealService;
 import com.immoradar.backend.deal.PropertyType;
 import org.springframework.stereotype.Service;
 
@@ -9,18 +8,10 @@ import java.math.RoundingMode;
 
 @Service
 public class DvfMarketService {
-    private final DealService dealService;
     private final MarketDataClient marketDataClient;
 
-    public DvfMarketService(DealService dealService, MarketDataClient marketDataClient) {
-        this.dealService = dealService;
+    public DvfMarketService(MarketDataClient marketDataClient) {
         this.marketDataClient = marketDataClient;
-    }
-
-    public DvfMarketAnalysis analyzeDeal(String dealId) {
-        var deal = dealService.getEntity(dealId);
-        var pricePerSquareMeter = deal.getPrice().divide(deal.getSurface(), 0, RoundingMode.HALF_UP);
-        return analyze(deal.getLocation(), pricePerSquareMeter, deal.getPropertyType(), deal.getSurface());
     }
 
     public DvfMarketAnalysis analyze(String location, BigDecimal pricePerSquareMeter,
