@@ -6,6 +6,9 @@ import {
   Deal,
   DealFilters,
   DealSearchResponse,
+  DealStatus,
+  DvfMarketAnalysis,
+  ListingExtractResult,
   SimulationRequest,
   SimulationResult,
 } from '../models/deal.model';
@@ -20,14 +23,36 @@ export class DealService {
       .set('yieldMin', filters.yieldMin)
       .set('cashflowMin', filters.cashflowMin)
       .set('favoritesOnly', filters.favoritesOnly)
+      .set('excludeEnergySieves', filters.excludeEnergySieves)
+      .set('sort', filters.sort)
       .set('page', page)
       .set('size', 6);
 
     if (filters.location.trim()) {
       params = params.set('location', filters.location.trim());
     }
+    if (filters.propertyType) params = params.set('propertyType', filters.propertyType);
+    if (filters.status) params = params.set('status', filters.status);
 
     return this.http.get<DealSearchResponse>('/api/deals', { params });
+  }
+
+  getDeal(dealId: string) {
+    return this.http.get<Deal>(`/api/deals/${encodeURIComponent(dealId)}`);
+  }
+
+  updateDeal(dealId: string, request: CreateDealRequest): Promise<Deal> {
+    return firstValueFrom(this.http.put<Deal>(`/api/deals/${encodeURIComponent(dealId)}`, request));
+  }
+
+  setStatus(dealId: string, status: DealStatus): Promise<Deal> {
+    return firstValueFrom(
+      this.http.patch<Deal>(`/api/deals/${encodeURIComponent(dealId)}/status`, { status }),
+    );
+  }
+
+  deleteDeal(dealId: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`/api/deals/${encodeURIComponent(dealId)}`));
   }
 
   createDeal(request: CreateDealRequest): Promise<Deal> {
@@ -51,14 +76,14 @@ export class DealService {
   }
 
   getDealMarketAnalysis(dealId: string) {
-    return this.http.get<import('../models/deal.model').DvfMarketAnalysis>(
+    return this.http.get<DvfMarketAnalysis>(
       `/api/market/deals/${encodeURIComponent(dealId)}/dvf`
     );
   }
 
-  extractListingFromUrl(url: string): Promise<import('../models/deal.model').ListingExtractResult> {
+  extractListingFromUrl(url: string): Promise<ListingExtractResult> {
     return firstValueFrom(
-      this.http.post<import('../models/deal.model').ListingExtractResult>('/api/listings/extract', { url })
+      this.http.post<ListingExtractResult>('/api/listings/extract', { url })
     );
   }
 }

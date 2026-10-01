@@ -1,0 +1,44 @@
+@let d = deal();
+<article class="card" [class.selected]="selected()">
+  <button class="body" type="button" (click)="selectDeal.emit(d.id)" [attr.aria-pressed]="selected()">
+    <span class="photo">
+      <img appImageFallback [src]="d.imageUrl" alt="" loading="lazy" />
+      <span class="score" [class]="'score ' + scoreTone()" [attr.aria-label]="'Radar score ' + d.opportunityScore + ' sur 10'">{{ d.opportunityScore }}</span>
+    </span>
+    <span class="content">
+      <span class="topline">
+        <span class="pill">{{ typeLabel() }}</span>
+        @if (d.status !== 'TO_REVIEW') { <span class="pill status">{{ statusLabel(d.status) }}</span> }
+        @if (!d.sourceUrl) { <span class="pill">Saisie / exemple</span> }
+        @if (d.energyClass) {
+          <span class="dpe" [class]="'dpe dpe-' + d.energyClass" [attr.title]="'DPE ' + d.energyClass">{{ d.energyClass }}</span>
+        }
+      </span>
+      <strong class="title">{{ d.title }}</strong>
+      <small class="location">{{ d.location }} · {{ d.surface }} m² · {{ money(d.pricePerSquareMeter) }}/m²</small>
+      <span class="signals">
+        @if (d.marketDeltaPercent !== null && d.marketDeltaPercent <= -5) {
+          <span class="signal positive">{{ d.marketDeltaPercent }} % vs marché</span>
+        } @else if (d.marketDeltaPercent !== null && d.marketDeltaPercent >= 10) {
+          <span class="signal negative">+{{ d.marketDeltaPercent }} % vs marché</span>
+        }
+        @if (d.priceDropPercent > 0) { <span class="signal positive">Prix −{{ d.priceDropPercent }} %</span> }
+        @if (d.daysOnMarket !== null && d.daysOnMarket > 90) { <span class="signal">{{ d.daysOnMarket }} j en ligne</span> }
+        @if (energySieve()) { <span class="signal negative">Passoire {{ d.energyClass }}</span> }
+      </span>
+      <span class="numbers">
+        <b>{{ money(d.price) }}</b>
+        <span><strong>{{ d.grossYield }} %</strong><small>brut</small></span>
+        <span><strong [class.negative]="d.referenceMonthlyCashFlow < 0">{{ signedMoney(d.referenceMonthlyCashFlow) }}</strong><small>cash-flow</small></span>
+      </span>
+    </span>
+  </button>
+  <button
+    class="favorite"
+    [class.active]="d.favorite"
+    [disabled]="favoriteDisabled()"
+    type="button"
+    (click)="toggleFavorite.emit($event)"
+    [attr.aria-label]="d.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'"
+    [attr.aria-pressed]="d.favorite">♥</button>
+</article>

@@ -1,5 +1,21 @@
 export type PropertyType = 'Studio' | 'Apartment' | 'Building' | 'House';
 export type TaxRegime = 'REEL_LMNP' | 'MICRO_BIC' | 'NU' | 'SCI_IS';
+export type EnergyClass = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
+export type DealStatus = 'TO_REVIEW' | 'TO_VISIT' | 'OFFER_MADE' | 'ACQUIRED' | 'REJECTED';
+export type DealSort = 'SCORE' | 'YIELD' | 'MARKET_DISCOUNT' | 'PRICE_DROP' | 'PRICE_ASC' | 'PRICE_M2_ASC' | 'NEWEST';
+
+export interface ScoreFactor {
+  key: 'market' | 'yield' | 'cashflow' | 'negotiation' | 'energy';
+  label: string;
+  points: number;
+  maxPoints: number;
+  detail: string;
+}
+
+export interface PricePoint {
+  observedOn: string;
+  price: number;
+}
 
 export interface Deal {
   id: string;
@@ -16,10 +32,20 @@ export interface Deal {
   opportunityScore: number;
   imageUrl: string;
   favorite: boolean;
-  sourceUrl: string | null;
   grossYield: number;
   monthlyOperatingIncome: number;
   pricePerSquareMeter: number;
+  status: DealStatus;
+  energyClass: EnergyClass | null;
+  sourceUrl: string | null;
+  listedOn: string | null;
+  daysOnMarket: number | null;
+  priceDropPercent: number;
+  marketDeltaPercent: number | null;
+  referenceMonthlyCashFlow: number;
+  priceHistory: PricePoint[];
+  scoreBreakdown: ScoreFactor[];
+  alerts: string[];
 }
 
 export interface DealSearchResponse {
@@ -36,6 +62,10 @@ export interface DealFilters {
   cashflowMin: number;
   location: string;
   favoritesOnly: boolean;
+  propertyType: PropertyType | '';
+  excludeEnergySieves: boolean;
+  status: DealStatus | '';
+  sort: DealSort;
 }
 
 export interface SimulationRequest {
@@ -50,6 +80,9 @@ export interface SimulationRequest {
   insuranceAnnual: number;
   rentGrowthRate: number;
   propertyGrowthRate: number;
+  monthlyNetIncome: number | null;
+  existingMonthlyDebt: number;
+  loanInsuranceRate: number;
 }
 
 export interface ProjectionPoint {
@@ -71,6 +104,7 @@ export interface TaxComparisonItem {
   advantage: string;
 }
 
+/** Champs lus dans l'annonce ; un champ absent reste null et doit être saisi à la main. */
 export interface ListingExtractResult {
   title: string;
   price: number;
@@ -100,9 +134,10 @@ export interface SimulationResult {
   cashFlowStatus: 'POSITIF' | 'EQUILIBRE' | 'A_OPTIMISER';
   projection: ProjectionPoint[];
   taxComparison?: TaxComparisonItem[];
-  debtEffortRatio?: number;
-  internalRateOfReturn?: number;
+  debtEffortRatio?: number | null;
+  internalRateOfReturn?: number | null;
   netPresentValue?: number;
+  monthlyLoanInsurance?: number;
 }
 
 export interface CreateDealRequest {
@@ -117,7 +152,9 @@ export interface CreateDealRequest {
   propertyType: PropertyType;
   description: string;
   imageUrl: string;
-  sourceUrl: string;
+  energyClass: EnergyClass | null;
+  sourceUrl: string | null;
+  listedOn: string | null;
 }
 
 export interface ProblemDetail {
