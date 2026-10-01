@@ -1,6 +1,5 @@
 package com.immoradar.backend.market;
 
-import com.immoradar.backend.deal.DealService;
 import com.immoradar.backend.deal.PropertyType;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
@@ -16,9 +15,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class DvfMarketServiceTests {
-    private final DealService dealService = mock(DealService.class);
     private final MarketDataClient client = mock(MarketDataClient.class);
-    private final DvfMarketService service = new DvfMarketService(dealService, client);
+    private final DvfMarketService service = new DvfMarketService(client);
 
     @Test
     void computesDifferenceOnlyFromAttributedComparableSales() {

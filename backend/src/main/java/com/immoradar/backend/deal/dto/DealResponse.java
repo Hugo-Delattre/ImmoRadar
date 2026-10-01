@@ -1,8 +1,15 @@
 package com.immoradar.backend.deal.dto;
 
+import com.immoradar.backend.deal.DealStatus;
+import com.immoradar.backend.deal.EnergyClass;
+import com.immoradar.backend.deal.PricePoint;
 import com.immoradar.backend.deal.PropertyType;
+import com.immoradar.backend.deal.ScoreFactor;
+import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 
 public record DealResponse(
         String id,
@@ -22,5 +29,21 @@ public record DealResponse(
         BigDecimal grossYield,
         BigDecimal monthlyOperatingIncome,
         BigDecimal pricePerSquareMeter,
-        String sourceUrl
-) {}
+        DealStatus status,
+        @Nullable EnergyClass energyClass,
+        @Nullable String sourceUrl,
+        @Nullable LocalDate listedOn,
+        @Nullable Long daysOnMarket,
+        double priceDropPercent,
+        @Nullable Double marketDeltaPercent,
+        BigDecimal referenceMonthlyCashFlow,
+        List<PricePoint> priceHistory,
+        List<ScoreFactor> scoreBreakdown,
+        List<String> alerts
+) {
+    public DealResponse {
+        priceHistory = List.copyOf(priceHistory);
+        scoreBreakdown = List.copyOf(scoreBreakdown);
+        alerts = List.copyOf(alerts);
+    }
+}

@@ -3,14 +3,17 @@ package com.immoradar.backend.deal;
 import com.immoradar.backend.deal.dto.CreateDealRequest;
 import com.immoradar.backend.deal.dto.DealResponse;
 import com.immoradar.backend.deal.dto.DealSearchResponse;
+import com.immoradar.backend.market.DvfMarketService;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
@@ -22,23 +25,22 @@ public class DealService {
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final DealRepository dealRepository;
+    private final DvfMarketService marketService;
+    private final Clock clock;
+    private final boolean marketComparisonEnabled;
 
-    public DealService(DealRepository dealRepository) {
+    public DealService(
+            DealRepository dealRepository, DvfMarketService marketService, Clock clock,
+            @Value("${immoradar.market.score-with-market:true}") boolean marketComparisonEnabled) {
         this.dealRepository = dealRepository;
+        this.marketService = marketService;
+        this.clock = clock;
+        this.marketComparisonEnabled = marketComparisonEnabled;
     }
 
-    public DealSearchResponse search(
-            @Nullable BigDecimal priceMax,
-            @Nullable BigDecimal yieldMin,
-            @Nullable BigDecimal cashflowMin,
-            @Nullable String location,
-            boolean favoritesOnly,
-            int page,
-            int size) {
-        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "price"));
-        var deals = dealRepository.findAll(
-                DealSpecifications.matching(priceMax, yieldMin, cashflowMin, location, favoritesOnly),
-                pageable);
+    public DealSearchResponse search(DealSearchCriteria criteria, int page, int size) {
+        var pageable = PageRequest.of(page, size, criteria.sort().toSort());
+        var deals = dealRepository.findAll(DealSpecifications.matching(criteria), pageable);
 
         return new DealSearchResponse(
                 deals.getContent().stream().map(this::toResponse).toList(),
@@ -48,26 +50,27 @@ public class DealService {
                 deals.getTotalPages());
     }
 
+    public DealResponse get(String dealId) {
+        return toResponse(getEntity(dealId));
+    }
+
     @Transactional
     public DealResponse create(CreateDealRequest request) {
-        var deal = new Deal(
-                UUID.randomUUID().toString(),
-                request.title().trim(),
-                request.price(),
-                request.monthlyRent(),
-                request.monthlyCharges(),
-                request.propertyTax(),
-                request.renovationCost(),
-                request.location().trim(),
-                request.surface(),
-                request.propertyType(),
-                request.description() == null ? "" : request.description().trim(),
-                calculateOpportunityScore(request),
-                request.imageUrl() == null || request.imageUrl().isBlank() ? DEFAULT_IMAGE : request.imageUrl().trim(),
-                false,
-                request.sourceUrl() == null || request.sourceUrl().isBlank() ? null : request.sourceUrl().trim());
+        var deal = new Deal();
+        deal.setId(UUID.randomUUID().toString());
+        deal.setStatus(DealStatus.TO_REVIEW);
+        deal.setCreatedOn(today());
+        apply(deal, request);
+        deal.setPrice(request.price());
+        return toResponse(dealRepository.save(rescore(deal)));
+    }
 
-        return toResponse(dealRepository.save(deal));
+    @Transactional
+    public DealResponse update(String dealId, CreateDealRequest request) {
+        var deal = getEntity(dealId);
+        apply(deal, request);
+        deal.recordPrice(request.price(), today());
+        return toResponse(dealRepository.save(rescore(deal)));
     }
 
     @Transactional
@@ -77,22 +80,65 @@ public class DealService {
         return toResponse(dealRepository.save(deal));
     }
 
+    @Transactional
+    public DealResponse setStatus(String dealId, DealStatus status) {
+        var deal = getEntity(dealId);
+        deal.setStatus(status);
+        return toResponse(dealRepository.save(deal));
+    }
+
+    @Transactional
+    public void delete(String dealId) {
+        dealRepository.delete(getEntity(dealId));
+    }
+
+    /** Recalcule les valeurs dérivées et le score de tous les biens, par exemple après une évolution du barème. */
+    @Transactional
+    public void rescoreAll() {
+        dealRepository.findAll().forEach(deal -> {
+            deal.setStatus(deal.getStatus());
+            dealRepository.save(rescore(deal));
+        });
+    }
+
     public Deal getEntity(String dealId) {
         return dealRepository.findById(dealId).orElseThrow(() -> new DealNotFoundException(dealId));
     }
 
-    private double calculateOpportunityScore(CreateDealRequest request) {
-        var grossYield = percentage(request.monthlyRent().multiply(TWELVE), request.price());
-        var operatingIncome = monthlyOperatingIncome(
-                request.monthlyRent(), request.monthlyCharges(), request.propertyTax());
-        var yieldScore = Math.min(6.0, grossYield.doubleValue() * 0.6);
-        var cashflowScore = Math.min(4.0, Math.max(0, operatingIncome.doubleValue() / 100));
-        return BigDecimal.valueOf(yieldScore + cashflowScore)
-                .setScale(1, RoundingMode.HALF_UP)
-                .doubleValue();
+    private void apply(Deal deal, CreateDealRequest request) {
+        deal.setTitle(request.title().trim());
+        deal.setMonthlyRent(request.monthlyRent());
+        deal.setMonthlyCharges(request.monthlyCharges());
+        deal.setPropertyTax(request.propertyTax());
+        deal.setRenovationCost(request.renovationCost());
+        deal.setLocation(request.location().trim());
+        deal.setSurface(request.surface());
+        deal.setPropertyType(request.propertyType());
+        deal.setDescription(request.description() == null ? "" : request.description().trim());
+        deal.setImageUrl(request.imageUrl() == null || request.imageUrl().isBlank()
+                ? DEFAULT_IMAGE : request.imageUrl().trim());
+        deal.setEnergyClass(request.energyClass());
+        deal.setSourceUrl(request.sourceUrl() == null || request.sourceUrl().isBlank() ? null : request.sourceUrl().trim());
+        deal.setListedOn(request.listedOn());
+    }
+
+    private Deal rescore(Deal deal) {
+        deal.refreshDerivedValues();
+        deal.setMarketDeltaPercent(marketDelta(deal));
+        deal.setOpportunityScore(DealScoring.score(DealScoring.breakdown(deal, today())));
+        return deal;
+    }
+
+    /** Écart au prix médian des ventes comparables, ou {@code null} sans référence vérifiable. */
+    private @Nullable Double marketDelta(Deal deal) {
+        if (!marketComparisonEnabled) return null;
+        var pricePerSquareMeter = deal.getPrice().divide(deal.getSurface(), 0, RoundingMode.HALF_UP);
+        var market = marketService.analyze(deal.getLocation(), pricePerSquareMeter, deal.getPropertyType(), deal.getSurface());
+        return market.available() && market.deltaPercentage() != null ? market.deltaPercentage().doubleValue() : null;
     }
 
     private DealResponse toResponse(Deal deal) {
+        var today = today();
         return new DealResponse(
                 deal.getId(), deal.getTitle(), deal.getPrice(), deal.getMonthlyRent(),
                 deal.getMonthlyCharges(), deal.getPropertyTax(), deal.getRenovationCost(),
@@ -101,7 +147,21 @@ public class DealService {
                 percentage(deal.getMonthlyRent().multiply(TWELVE), deal.getPrice()),
                 monthlyOperatingIncome(deal.getMonthlyRent(), deal.getMonthlyCharges(), deal.getPropertyTax()),
                 deal.getPrice().divide(deal.getSurface(), 0, RoundingMode.HALF_UP),
-                deal.getSourceUrl());
+                deal.getStatus(),
+                deal.getEnergyClass(),
+                deal.getSourceUrl(),
+                deal.getListedOn(),
+                DealScoring.daysOnMarket(deal, today),
+                deal.getPriceDropPercent() == null ? 0 : deal.getPriceDropPercent(),
+                deal.getMarketDeltaPercent(),
+                BigDecimal.valueOf(DealScoring.referenceMonthlyCashFlow(deal)).setScale(0, RoundingMode.HALF_UP),
+                deal.getPriceHistory(),
+                DealScoring.breakdown(deal, today),
+                DealScoring.alerts(deal, today));
+    }
+
+    private LocalDate today() {
+        return LocalDate.now(clock);
     }
 
     private static BigDecimal percentage(BigDecimal numerator, BigDecimal denominator) {

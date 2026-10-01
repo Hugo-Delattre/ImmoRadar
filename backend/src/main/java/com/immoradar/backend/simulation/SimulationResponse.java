@@ -1,5 +1,7 @@
 package com.immoradar.backend.simulation;
 
+import org.jspecify.annotations.Nullable;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -16,9 +18,10 @@ public record SimulationResponse(
         String cashFlowStatus,
         List<ProjectionPoint> projection,
         List<TaxComparisonItem> taxComparison,
-        BigDecimal debtEffortRatio,
-        BigDecimal internalRateOfReturn,
-        BigDecimal netPresentValue
+        @Nullable BigDecimal debtEffortRatio,
+        @Nullable BigDecimal internalRateOfReturn,
+        BigDecimal netPresentValue,
+        BigDecimal monthlyLoanInsurance
 ) {
     public SimulationResponse {
         projection = List.copyOf(projection);
@@ -39,6 +42,6 @@ public record SimulationResponse(
             List<ProjectionPoint> projection) {
         this(totalProjectCost, loanAmount, monthlyMortgage, monthlyCashFlow, grossYield, netYield,
                 taxAnnual, annualOperatingExpenses, breakEvenRent, cashFlowStatus, projection,
-                List.of(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+                List.of(), null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     }
 }

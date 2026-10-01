@@ -62,6 +62,30 @@ class FinancialSimulationServiceTests {
     }
 
     @Test
+    void shouldComputeTheHcsfDebtRatioFromHouseholdIncomeAndRetainedRent() {
+        var request = householdRequest("3000", "250", null);
+        var result = simulationService.simulate(request);
+
+        // (mensualité + crédits en cours) / (revenus + 70 % du loyer)
+        var expected = result.monthlyMortgage().add(amount("250")).multiply(amount("100"))
+                .divide(amount("3000").add(amount("1350").multiply(amount("0.70"))), 1, java.math.RoundingMode.HALF_UP);
+        assertThat(result.debtEffortRatio()).isEqualByComparingTo(expected);
+    }
+
+    @Test
+    void shouldChargeBorrowerInsuranceOnTheInitialCapital() {
+        var withoutInsurance = simulationService.simulate(householdRequest("3000", "0", null));
+        var withInsurance = simulationService.simulate(householdRequest("3000", "0", "0.36"));
+
+        // 0,36 % par an sur le capital emprunté
+        var expectedInsurance = withInsurance.loanAmount().multiply(amount("0.0036"))
+                .divide(amount("12"), 2, java.math.RoundingMode.HALF_UP);
+        assertThat(withInsurance.monthlyLoanInsurance()).isEqualByComparingTo(expectedInsurance);
+        assertThat(withInsurance.monthlyCashFlow()).isLessThan(withoutInsurance.monthlyCashFlow());
+        assertThat(withInsurance.debtEffortRatio()).isGreaterThan(withoutInsurance.debtEffortRatio());
+    }
+
+    @Test
     void shouldNotInventInitialEquityForZeroDownpayment() {
         var request = new SimulationRequest("deal-1", BigDecimal.ZERO, amount("3.5"), 20,
                 TaxRegime.REEL_LMNP, amount("30"), amount("4"), BigDecimal.ZERO,
@@ -98,6 +122,14 @@ class FinancialSimulationServiceTests {
                 "deal-1", amount("30000"), amount(interestRate), 20, regime,
                 amount("30"), amount("4"), BigDecimal.ZERO, amount("180"),
                 amount("1.5"), amount("1.2"));
+    }
+
+    private SimulationRequest householdRequest(String income, String existingDebt, String loanInsuranceRate) {
+        return new SimulationRequest(
+                "deal-1", amount("30000"), amount("3.5"), 20, TaxRegime.REEL_LMNP,
+                amount("30"), amount("4"), BigDecimal.ZERO, amount("180"),
+                amount("1.5"), amount("1.2"), amount(income), amount(existingDebt),
+                loanInsuranceRate == null ? null : amount(loanInsuranceRate));
     }
 
     private Deal sampleDeal() {

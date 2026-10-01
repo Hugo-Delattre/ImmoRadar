@@ -1,29 +1,89 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormField, form } from '@angular/forms/signals';
 import { of } from 'rxjs';
 import {
   CreateDealRequest,
   Deal,
-  DvfMarketAnalysis,
+  DealFilters,
+  DealSort,
+  DealStatus,
+  EnergyClass,
   ProblemDetail,
   SimulationRequest,
   TaxRegime,
 } from '../../core/models/deal.model';
 import { DealService } from '../../core/services/deal.service';
 import { ProjectionChartComponent } from './components/projection-chart/projection-chart.component';
+import { DealCardComponent } from './components/deal-card/deal-card.component';
+import { ScoreBreakdownComponent } from './components/score-breakdown/score-breakdown.component';
+import { DEAL_STATUSES, DealImageFallbackDirective, statusLabel } from './deal-labels';
+
+/** Form state keeps optional fields as strings so they bind cleanly to inputs and selects. */
+type DealFormModel = Omit<CreateDealRequest, 'energyClass' | 'sourceUrl' | 'listedOn'> & {
+  energyClass: EnergyClass | '';
+  sourceUrl: string;
+  listedOn: string;
+};
+
+const DEFAULT_FILTERS: DealFilters = {
+  priceMax: 400000,
+  yieldMin: 0,
+  cashflowMin: -2000,
+  location: '',
+  favoritesOnly: false,
+  propertyType: '',
+  excludeEnergySieves: false,
+  status: '',
+  sort: 'SCORE',
+};
+
+const EMPTY_DEAL_FORM: DealFormModel = {
+  title: '',
+  price: 0,
+  monthlyRent: 0,
+  monthlyCharges: 0,
+  propertyTax: 0,
+  renovationCost: 0,
+  location: '',
+  surface: 0,
+  propertyType: 'Apartment',
+  description: '',
+  imageUrl: '',
+  energyClass: '',
+  sourceUrl: '',
+  listedOn: '',
+};
 
 @Component({
   selector: 'app-deal-finder',
   standalone: true,
-  imports: [FormField, ProjectionChartComponent],
+  imports: [FormField, ProjectionChartComponent, DealCardComponent, ScoreBreakdownComponent, DealImageFallbackDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './deal-finder.component.html',
   styleUrl: './deal-finder.component.scss',
 })
 export class DealFinderComponent {
   private readonly dealService = inject(DealService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  protected readonly statuses = DEAL_STATUSES;
+  protected readonly statusLabel = statusLabel;
+  protected readonly energyClasses: EnergyClass[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+  protected readonly sortOptions: { value: DealSort; label: string }[] = [
+    { value: 'SCORE', label: 'Meilleur Radar score' },
+    { value: 'MARKET_DISCOUNT', label: 'Plus forte décote vs marché' },
+    { value: 'YIELD', label: 'Meilleur rendement brut' },
+    { value: 'PRICE_DROP', label: 'Plus forte baisse de prix' },
+    { value: 'PRICE_M2_ASC', label: 'Prix au m² le plus bas' },
+    { value: 'PRICE_ASC', label: 'Prix le plus bas' },
+    { value: 'NEWEST', label: 'Ajoutés récemment' },
+  ];
+  protected readonly editingDealId = signal<string | null>(null);
+  protected readonly actionError = signal<string | null>(null);
+  protected readonly statusPending = signal(false);
   private readonly currencyFormatter = new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',
@@ -36,7 +96,9 @@ export class DealFinderComponent {
   protected readonly submitFieldErrors = signal<Record<string, string>>({});
   protected readonly favoritePendingId = signal<string | null>(null);
   protected readonly favoriteError = signal<string | null>(null);
-  protected readonly selectedDealId = signal<string | null>(null);
+  protected readonly selectedDealId = signal<string | null>(
+    this.route.snapshot.queryParamMap.get('bien'),
+  );
   protected readonly isDownloadingReport = signal(false);
   protected readonly reportError = signal<string | null>(null);
 
@@ -45,29 +107,10 @@ export class DealFinderComponent {
   protected readonly extractUrlError = signal<string | null>(null);
   protected readonly extractSuccessMessage = signal<string | null>(null);
 
-  protected readonly newDealModel = signal<CreateDealRequest>({
-    title: '',
-    price: 0,
-    monthlyRent: 0,
-    monthlyCharges: 0,
-    propertyTax: 0,
-    renovationCost: 0,
-    location: '',
-    surface: 0,
-    propertyType: 'Apartment',
-    description: '',
-    imageUrl: '',
-    sourceUrl: '',
-  });
+  protected readonly newDealModel = signal<DealFormModel>({ ...EMPTY_DEAL_FORM });
   protected readonly newDealForm = form(this.newDealModel);
 
-  protected readonly filterModel = signal({
-    priceMax: 400000,
-    yieldMin: 5,
-    cashflowMin: 0,
-    location: '',
-    favoritesOnly: false,
-  });
+  protected readonly filterModel = signal<DealFilters>({ ...DEFAULT_FILTERS });
   protected readonly filterForm = form(this.filterModel);
 
   // A new search starts on page one; explicit navigation can still change it.
@@ -82,10 +125,23 @@ export class DealFinderComponent {
   protected readonly totalDeals = computed(() => this.searchResult()?.totalElements ?? 0);
   protected readonly totalPages = computed(() => this.searchResult()?.totalPages ?? 0);
 
+  // A deal opened from a shared link may not be on the current results page: fetch it on its own.
+  private readonly linkedDealResource = rxResource({
+    params: () => {
+      const id = this.selectedDealId();
+      if (!id || !this.dealsResource.hasValue() || this.deals().some((deal) => deal.id === id)) return undefined;
+      return id;
+    },
+    stream: ({ params }) => this.dealService.getDeal(params),
+  });
+
   protected readonly selectedDeal = computed<Deal | null>(() => {
-    const deals = this.deals();
-    if (deals.length === 0) return null;
-    return deals.find((deal) => deal.id === this.selectedDealId()) ?? deals[0];
+    const id = this.selectedDealId();
+    const inList = this.deals().find((deal) => deal.id === id);
+    if (inList) return inList;
+    const linked = this.linkedDealResource.hasValue() ? this.linkedDealResource.value() : undefined;
+    if (linked && linked.id === id) return linked;
+    return this.deals()[0] ?? null;
   });
 
   protected readonly simulationModel = signal({
@@ -99,6 +155,10 @@ export class DealFinderComponent {
     insuranceAnnual: 180,
     rentGrowthRate: 1.5,
     propertyGrowthRate: 1.2,
+    // No invented household: the HCSF ratio stays blank until the user enters an income.
+    monthlyNetIncome: 0,
+    existingMonthlyDebt: 0,
+    loanInsuranceRate: 0.3,
   });
   protected readonly simulationForm = form(this.simulationModel);
 
@@ -106,7 +166,12 @@ export class DealFinderComponent {
       const deal = this.selectedDeal();
       if (!deal) return null;
       const values = this.simulationForm().value();
-      return { ...values, dealId: deal.id, loanTermYears: Number(values.loanTermYears) };
+      return {
+        ...values,
+        dealId: deal.id,
+        loanTermYears: Number(values.loanTermYears),
+        monthlyNetIncome: values.monthlyNetIncome && values.monthlyNetIncome > 0 ? values.monthlyNetIncome : null,
+      };
   });
 
   protected readonly simulationResource = rxResource({
@@ -144,6 +209,7 @@ export class DealFinderComponent {
 
   protected selectDeal(id: string): void {
     this.selectedDealId.set(id);
+    void this.router.navigate([], { queryParams: { bien: id }, queryParamsHandling: 'merge', replaceUrl: true });
     const deal = this.deals().find((candidate) => candidate.id === id);
     if (deal) {
       this.simulationModel.update((simulation) => ({
@@ -168,13 +234,47 @@ export class DealFinderComponent {
   }
 
   protected resetFilters(): void {
-    this.filterModel.set({
-      priceMax: 400000,
-      yieldMin: 5,
-      cashflowMin: 0,
-      location: '',
-      favoritesOnly: false,
-    });
+    this.filterModel.set({ ...DEFAULT_FILTERS });
+  }
+
+  protected filterByStatus(status: DealStatus | ''): void {
+    this.filterModel.update((filters) => ({ ...filters, status }));
+  }
+
+  protected async changeStatus(deal: Deal, status: DealStatus): Promise<void> {
+    this.statusPending.set(true);
+    this.actionError.set(null);
+    try {
+      await this.dealService.setStatus(deal.id, status);
+      this.dealsResource.reload();
+      this.linkedDealResource.reload();
+    } catch {
+      this.actionError.set('Le statut n’a pas pu être mis à jour.');
+    } finally {
+      this.statusPending.set(false);
+    }
+  }
+
+  protected async deleteDeal(deal: Deal): Promise<void> {
+    if (!confirm(`Supprimer définitivement « ${deal.title} » ?`)) return;
+    this.actionError.set(null);
+    try {
+      await this.dealService.deleteDeal(deal.id);
+      this.selectedDealId.set(null);
+      void this.router.navigate([], { queryParams: { bien: null }, queryParamsHandling: 'merge', replaceUrl: true });
+      this.dealsResource.reload();
+    } catch {
+      this.actionError.set('Ce bien n’a pas pu être supprimé.');
+    }
+  }
+
+  protected async copyDealLink(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      this.actionError.set(null);
+    } catch {
+      this.actionError.set('Copie impossible : copie l’adresse de la page.');
+    }
   }
 
   protected async toggleFavorite(event: Event, deal: Deal): Promise<void> {
@@ -201,6 +301,33 @@ export class DealFinderComponent {
   }
 
   protected openCreateModal(): void {
+    this.editingDealId.set(null);
+    this.newDealModel.set({ ...EMPTY_DEAL_FORM });
+    this.openModal();
+  }
+
+  protected openEditModal(deal: Deal): void {
+    this.editingDealId.set(deal.id);
+    this.newDealModel.set({
+      title: deal.title,
+      price: deal.price,
+      monthlyRent: deal.monthlyRent,
+      monthlyCharges: deal.monthlyCharges,
+      propertyTax: deal.propertyTax,
+      renovationCost: deal.renovationCost,
+      location: deal.location,
+      surface: deal.surface,
+      propertyType: deal.propertyType,
+      description: deal.description,
+      imageUrl: deal.imageUrl,
+      energyClass: deal.energyClass ?? '',
+      sourceUrl: deal.sourceUrl ?? '',
+      listedOn: deal.listedOn ?? '',
+    });
+    this.openModal();
+  }
+
+  private openModal(): void {
     this.submitError.set(null);
     this.submitFieldErrors.set({});
     this.importUrl.set('');
@@ -222,24 +349,27 @@ export class DealFinderComponent {
 
     try {
       const extracted = await this.dealService.extractListingFromUrl(url);
+      // Only overwrite what the listing actually provided; missing values stay editable.
       this.newDealModel.update((model) => ({
         ...model,
         title: extracted.title,
         price: extracted.price,
-        monthlyRent: 0,
+        monthlyRent: extracted.monthlyRent ?? model.monthlyRent,
         surface: extracted.surface,
-        location: extracted.location ?? '',
+        location: extracted.location ?? model.location,
         propertyType: extracted.propertyType,
-        renovationCost: 0,
-        monthlyCharges: 0,
-        propertyTax: 0,
-        imageUrl: extracted.imageUrl ?? '',
-        description: extracted.description ?? '',
+        renovationCost: extracted.renovationCost ?? model.renovationCost,
+        monthlyCharges: extracted.monthlyCharges ?? model.monthlyCharges,
+        propertyTax: extracted.propertyTax ?? model.propertyTax,
+        imageUrl: extracted.imageUrl ?? model.imageUrl,
+        description: extracted.description ?? model.description,
         sourceUrl: extracted.sourceUrl,
       }));
-      this.extractSuccessMessage.set('Prix et surface repérés dans la page. Vérifie-les, puis renseigne le loyer, la localisation et les charges : ils ne sont pas estimés automatiquement.');
-    } catch (error) {
-      const problem = error instanceof HttpErrorResponse ? error.error as ProblemDetail : null;
+      this.extractSuccessMessage.set(
+        `Prix et surface repérés sur ${extracted.platform}. Vérifie-les, puis renseigne le loyer, la localisation, les charges et le DPE : ils ne sont pas estimés automatiquement.`,
+      );
+    } catch (error: unknown) {
+      const problem = error instanceof HttpErrorResponse ? (error.error as ProblemDetail | null) : null;
       this.extractUrlError.set(problem?.detail ?? 'Annonce inaccessible ou incomplète. Renseigne-la manuellement.');
     } finally {
       this.isExtractingUrl.set(false);
@@ -274,12 +404,22 @@ export class DealFinderComponent {
     this.isSubmitting.set(true);
     this.submitError.set(null);
     this.submitFieldErrors.set({});
+    const request: CreateDealRequest = {
+      ...value,
+      energyClass: value.energyClass || null,
+      sourceUrl: value.sourceUrl.trim() || null,
+      listedOn: value.listedOn || null,
+    };
     try {
-      const created = await this.dealService.createDeal(value);
-      this.selectedDealId.set(created.id);
+      const editingId = this.editingDealId();
+      const saved = editingId
+        ? await this.dealService.updateDeal(editingId, request)
+        : await this.dealService.createDeal(request);
+      this.selectDeal(saved.id);
       this.isCreateModalOpen.set(false);
-      this.newDealModel.update((model) => ({ ...model, title: '', location: '', description: '', sourceUrl: '' }));
+      this.newDealModel.set({ ...EMPTY_DEAL_FORM });
       this.dealsResource.reload();
+      this.linkedDealResource.reload();
     } catch (error: unknown) {
       const problem = error instanceof HttpErrorResponse ? (error.error as ProblemDetail) : null;
       this.submitError.set(problem?.detail ?? 'Impossible d’enregistrer ce bien pour le moment.');
@@ -320,6 +460,10 @@ export class DealFinderComponent {
 
   protected cashFlowTone(value: number | null | undefined): string {
     return (value ?? 0) >= 0 ? 'positive' : 'negative';
+  }
+
+  protected formatDate(iso: string): string {
+    return new Date(`${iso}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
   protected propertyTypeLabel(type: Deal['propertyType']): string {
