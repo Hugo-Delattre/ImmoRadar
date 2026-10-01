@@ -6,7 +6,9 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.Year;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,6 +29,9 @@ class DvfMarketServiceTests {
                         new BigDecimal("1200"), 1551, 2025, "Forte",
                         "https://foncierdata.fr/api/v1/commune/42218.json",
                         "https://foncierdata.fr/methodologie")));
+        when(client.findRecentSales(eq("42218"), eq("Appartement"), any(), eq(2025)))
+                .thenReturn(List.of(new RecentSale(LocalDate.of(2025, 12, 30), "Appartement",
+                        new BigDecimal("50"), new BigDecimal("75000"), new BigDecimal("1500"))));
 
         var result = service.analyze("Saint-Étienne (42)", new BigDecimal("1500"),
                 PropertyType.APARTMENT, new BigDecimal("50"));
@@ -35,6 +40,8 @@ class DvfMarketServiceTests {
         assertThat(result.deltaPercentage()).isEqualByComparingTo("25.0");
         assertThat(result.comparableCount()).isEqualTo(1551);
         assertThat(result.sourceUrl()).contains("42218");
+        assertThat(result.recentSales()).hasSize(1);
+        assertThat(result.recentSalesSourceUrl()).endsWith("/42218/transactions.json");
     }
 
     @Test
@@ -67,5 +74,23 @@ class DvfMarketServiceTests {
                  "tranches_surface":{"Appartement":[{"band":"30-60 m²","median":1202,"n":50}]}}
                 """.formatted(Year.now().getValue() - 4));
         assertThat(realClient.parseMarket(stale, "42218", "Appartement", new BigDecimal("45"))).isEmpty();
+    }
+
+    @Test
+    void acceptsOnlyRecentSalesMatchingTheActualCommuneTypeAndSurface() {
+        var realClient = new MarketDataClient(JsonMapper.builder().build());
+        var response = JsonMapper.builder().build().readTree("""
+                {"code_insee":"87085","annee":2025,"transactions":[
+                  {"date":"30/12/2025","type_local":"Appartement","surface_m2":77,"prix_eur":159600,"prix_m2_eur":2073},
+                  {"date":"30/12/2025","type_local":"Maison","surface_m2":80,"prix_eur":140000,"prix_m2_eur":1750},
+                  {"date":"30/12/2025","type_local":"Appartement","surface_m2":20,"prix_eur":50000,"prix_m2_eur":2500},
+                  {"date":"31/02/2025","type_local":"Appartement","surface_m2":78,"prix_eur":100000,"prix_m2_eur":1282}]}
+                """);
+
+        var sales = realClient.parseRecentSales(response, "87085", "Appartement", new BigDecimal("78"), 2025);
+
+        assertThat(sales).hasSize(1);
+        assertThat(sales.getFirst().price()).isEqualByComparingTo("159600");
+        assertThat(realClient.parseRecentSales(response, "99999", "Appartement", new BigDecimal("78"), 2025)).isEmpty();
     }
 }

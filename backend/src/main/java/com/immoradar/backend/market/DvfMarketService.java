@@ -50,10 +50,12 @@ public class DvfMarketService {
         var difference = pricePerSquareMeter.subtract(data.medianPricePerSquareMeter())
                 .multiply(BigDecimal.valueOf(100))
                 .divide(data.medianPricePerSquareMeter(), 1, RoundingMode.HALF_UP);
+        var recentSales = marketDataClient.findRecentSales(data.codeInsee(), category, surface, data.referenceYear());
         return new DvfMarketAnalysis(true, data.location(), data.codeInsee(), category,
                 pricePerSquareMeter, data.medianPricePerSquareMeter(), difference,
                 data.comparableCount(), data.referenceYear(), data.reliability(),
-                data.sourceUrl(), data.methodologyUrl(),
+                data.sourceUrl(), data.methodologyUrl(), recentSales,
+                recentSales.isEmpty() ? null : MarketDataClient.recentSalesUrl(data.codeInsee()),
                 "Médiane communale de ventes individuelles comparables. L'état, la rue, les travaux et le loyer ne sont pas pris en compte.");
     }
 }

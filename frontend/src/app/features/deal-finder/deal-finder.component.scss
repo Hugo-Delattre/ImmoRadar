@@ -301,6 +301,18 @@ input:focus, select:focus, textarea:focus { border-color: rgba(199,255,102,.55);
   }
 }
 
+.recent-sales { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.recent-sales-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; background: rgba(255,255,255,.025); }
+.recent-sales-heading strong, .recent-sales-heading small { display: block; }
+.recent-sales-heading strong { font-size: 12px; }
+.recent-sales-heading small, .recent-sales-empty { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.recent-sales-heading a { color: var(--lime); font-size: 10px; white-space: nowrap; text-underline-offset: 3px; }
+.recent-sales-list { margin: 0; padding: 0; list-style: none; }
+.recent-sales-list li { display: grid; grid-template-columns: 95px 1fr 95px 95px; gap: 8px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 11px; }
+.recent-sales-list time, .recent-sales-list small { color: var(--muted); }
+.recent-sales-list strong, .recent-sales-list small { text-align: right; }
+.recent-sales-empty { padding: 12px 14px; border-top: 1px solid var(--line); }
+
 .dvf-advice {
   display: flex;
   align-items: flex-start;
@@ -793,6 +805,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .deal-numbers > span:last-child { display: none; }
   .quick-select { grid-template-columns: 1fr 1fr; }
   .dvf-grid { grid-template-columns: 1fr; }
+  .recent-sales-heading { align-items: flex-start; flex-direction: column; }
+  .recent-sales-list li { grid-template-columns: 1fr 1fr; }
+  .recent-sales-list strong, .recent-sales-list small { text-align: left; }
   .tax-regimes-grid { grid-template-columns: 1fr; }
   .url-input-wrap { flex-direction: column; }
   .modal-backdrop { padding: 10px; }

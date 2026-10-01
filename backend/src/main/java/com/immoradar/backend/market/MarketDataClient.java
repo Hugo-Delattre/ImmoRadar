@@ -13,7 +13,12 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.Year;
+import java.time.format.DateTimeFormatter;
+import java.time.format.ResolverStyle;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -23,6 +28,10 @@ public class MarketDataClient {
     private static final Pattern PARENTHESIZED_CODE = Pattern.compile("\\s*\\((?:\\d{2,3}|\\d{5})\\)\\s*$");
     private static final String METHODOLOGY = "https://foncierdata.fr/methodologie";
     private static final int MIN_COMPARABLES = 20;
+    private static final int MAX_RECENT_SALES = 5;
+    private static final Pattern INSEE_CODE = Pattern.compile("[0-9AB]{5}");
+    private static final DateTimeFormatter SALE_DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu")
+            .withResolverStyle(ResolverStyle.STRICT);
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(3)).followRedirects(HttpClient.Redirect.NEVER).build();
@@ -46,7 +55,7 @@ public class MarketDataClient {
                 if (expectedDepartment != null
                         && !candidate.path("codeDepartement").asText().equals(expectedDepartment)) continue;
                 String code = candidate.path("code").asText();
-                if (!code.matches("[0-9AB]{5}")) continue;
+                if (!INSEE_CODE.matcher(code).matches()) continue;
                 JsonNode market = readJson("https://foncierdata.fr/api/v1/commune/" + code + ".json");
                 return parseMarket(market, code, category, surface);
             }
@@ -54,6 +63,45 @@ public class MarketDataClient {
             // An unavailable upstream must not turn into an invented valuation.
         }
         return Optional.empty();
+    }
+
+    public List<RecentSale> findRecentSales(String code, String category, BigDecimal surface, int year) {
+        try {
+            return parseRecentSales(readJson(recentSalesUrl(code)), code, category, surface, year);
+        } catch (Exception ignored) {
+            // A missing second source must not hide the already verified aggregate.
+            return List.of();
+        }
+    }
+
+    static String recentSalesUrl(String code) {
+        if (!INSEE_CODE.matcher(code).matches()) throw new IllegalArgumentException("Code INSEE invalide");
+        return "https://foncierdata.fr/api/v1/commune/" + code + "/transactions.json";
+    }
+
+    List<RecentSale> parseRecentSales(JsonNode response, String code, String category, BigDecimal surface, int year) {
+        if (!code.equals(response.path("code_insee").asText()) || response.path("annee").asInt() != year
+                || !response.path("transactions").isArray()) return List.of();
+        var sales = new ArrayList<RecentSale>();
+        BigDecimal smallest = surface.multiply(new BigDecimal("0.80"));
+        BigDecimal largest = surface.multiply(new BigDecimal("1.20"));
+        for (JsonNode item : response.path("transactions")) {
+            try {
+                if (!category.equals(item.path("type_local").asText())) continue;
+                BigDecimal soldSurface = item.path("surface_m2").decimalValue();
+                BigDecimal price = item.path("prix_eur").decimalValue();
+                BigDecimal pricePerSquareMeter = item.path("prix_m2_eur").decimalValue();
+                LocalDate date = LocalDate.parse(item.path("date").asText(), SALE_DATE);
+                if (date.getYear() != year || soldSurface.compareTo(smallest) < 0
+                        || soldSurface.compareTo(largest) > 0 || price.compareTo(BigDecimal.valueOf(10_000)) < 0
+                        || pricePerSquareMeter.signum() <= 0) continue;
+                sales.add(new RecentSale(date, category, soldSurface, price, pricePerSquareMeter));
+                if (sales.size() == MAX_RECENT_SALES) break;
+            } catch (RuntimeException ignored) {
+                // Skip malformed upstream records without inventing replacements.
+            }
+        }
+        return List.copyOf(sales);
     }
 
     Optional<ComparableMarket> parseMarket(JsonNode market, String code, String category, BigDecimal surface) {

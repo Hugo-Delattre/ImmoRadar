@@ -196,6 +196,21 @@
                   <article class="dvf-metric"><small>Écart à la médiane</small><strong [class.negative]="(market.deltaPercentage ?? 0) > 0" [class.positive]="(market.deltaPercentage ?? 0) < 0">{{ (market.deltaPercentage ?? 0) > 0 ? '+' : '' }}{{ market.deltaPercentage }} %</strong><span class="range">Un écart ne suffit pas à conclure à une bonne affaire.</span></article>
                   <article class="dvf-metric"><small>Référence</small><strong>{{ market.referenceYear }}</strong><span class="range">Commune INSEE {{ market.codeInsee }} · fiabilité {{ market.reliability }}</span></article>
                 </div>
+                <div class="recent-sales">
+                  <div class="recent-sales-heading">
+                    <div><strong>Ventes récentes observées</strong><small>Jusqu'à 5 ventes proches en surface parmi les 20 dernières publiées — exemples, pas estimation.</small></div>
+                    @if (market.recentSalesSourceUrl) { <a [href]="market.recentSalesSourceUrl" target="_blank" rel="noopener noreferrer">Voir le JSON source ↗</a> }
+                  </div>
+                  @if (market.recentSales.length) {
+                    <ul class="recent-sales-list">
+                      @for (sale of market.recentSales; track $index) {
+                        <li><time [attr.datetime]="sale.date">{{ sale.date | date:'dd/MM/yyyy' }}</time><span>{{ sale.surface }} m² · {{ sale.propertyCategory }}</span><strong>{{ formatCurrency(sale.price) }}</strong><small>{{ formatCurrency(sale.pricePerSquareMeter) }}/m²</small></li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="recent-sales-empty">Aucune vente proche affichable parmi les dernières ventes publiées, ou source temporairement indisponible.</p>
+                  }
+                </div>
               }
               <div class="dvf-advice">
                 <div class="advice-icon">💡</div>

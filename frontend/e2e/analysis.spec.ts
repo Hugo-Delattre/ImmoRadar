@@ -51,6 +51,9 @@ test.beforeEach(async ({ page }) => {
       reliability: 'Forte',
       sourceUrl: 'https://foncierdata.fr/api/v1/commune/69123.json',
       methodologyUrl: 'https://foncierdata.fr/methodologie',
+      recentSales: [{ date: '2025-12-30', propertyCategory: 'Appartement', surface: 61,
+        price: 181000, pricePerSquareMeter: 2967 }],
+      recentSalesSourceUrl: 'https://foncierdata.fr/api/v1/commune/69123/transactions.json',
       notice: 'Repère communal, pas une estimation du bien.',
     } });
   });
@@ -116,6 +119,8 @@ test('displays sourced communal market data without negotiation claims', async (
   await expect(page.getByText('Prix du marché · Lyon (69)')).toBeVisible();
   await expect(page.getByText('-14.3 %')).toBeVisible();
   await expect(page.getByText('342 ventes de même catégorie et tranche de surface')).toBeVisible();
+  await expect(page.getByText('Ventes récentes observées')).toBeVisible();
+  await expect(page.getByText(/181\s*000/)).toBeVisible();
   await expect(page.getByText('Repère communal, pas une estimation du bien.')).toBeVisible();
 });
 

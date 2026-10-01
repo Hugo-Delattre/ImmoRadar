@@ -143,5 +143,15 @@ export interface DvfMarketAnalysis {
   reliability: string | null;
   sourceUrl: string | null;
   methodologyUrl: string | null;
+  recentSales: RecentSale[];
+  recentSalesSourceUrl: string | null;
   notice: string;
+}
+
+export interface RecentSale {
+  date: string;
+  propertyCategory: string;
+  surface: number;
+  price: number;
+  pricePerSquareMeter: number;
 }

@@ -9,6 +9,7 @@ Mise à jour : 1 octobre 2026. Objectif : aider à **présélectionner** des inv
 - [x] API Spring : persistance des biens, recherche, simulation, PDF et validation des saisies ; tests unitaires et de contexte.
 - [x] Source d'annonce conservée avec le bien ; import opportuniste de métadonnées sur domaines autorisés. Aucun repli vers un bien fictif en cas d'échec ; saisie manuelle disponible.
 - [x] Agrégat de marché issu de transactions DVF via FoncierData, par **commune, type et tranche de surface**. Année, effectif et liens de provenance visibles ; absence de résultat si données insuffisantes.
+- [x] Transactions DVF récentes via l'API FoncierData : jusqu'à cinq ventes proches en type et surface, montrées comme illustrations non représentatives ; tests opt-in réseau et navigateur sur la chaîne Angular → Spring → API externes.
 - [x] Loyer d'équilibre calculé en réévaluant vacance, frais de gestion et impôt simplifié à chaque loyer candidat.
 - [x] Aucun taux d'endettement calculé sans revenus de l'emprunteur ; aucun TRI inventé lorsque l'apport initial est nul.
 - [x] README et interface explicitent les limites des cinq exemples fictifs et des simulations fiscales.
@@ -19,7 +20,7 @@ Mise à jour : 1 octobre 2026. Objectif : aider à **présélectionner** des inv
 - [ ] **Qualité des annonces** : importer via une source contractuelle/API ou proposer une capture assistée et vérifiable ; gérer doublons, liens morts, date de publication et historique des changements de prix. Les portails peuvent bloquer l'extraction HTML.
 - [ ] **Confiance du dossier** : distinguer chaque champ observé, saisi ou estimé ; afficher les pièces manquantes (DPE, copropriété, taxe foncière, charges récupérables, travaux, vacance locale). Interdire le badge « pépite vérifiée » tant que les données critiques ne sont pas justifiées.
 - [ ] **Comparables de vente plus fins** : utiliser les transactions individuelles officielles DVF/DVF+ ou une source sous contrat, nettoyer les outliers, rapprocher type/surface/date/secteur et afficher un intervalle de confiance. L'agrégat communal actuel n'est qu'un repère.
-- [ ] **Tests full-stack** : créer un bien via le navigateur avec le backend et une base isolée, le retrouver après redémarrage et comparer les résultats API/PDF ; ajouter ces tests à la CI.
+- [ ] **Tests full-stack reproductibles en CI** : créer un bien via le navigateur avec le backend et une base isolée, le retrouver après redémarrage et comparer les résultats API/PDF. Le smoke test live actuel dépend du réseau et d'un exemple préchargé ; il n'est pas ce test de CI.
 
 ## Priorité P1 — fiabilité financière
 

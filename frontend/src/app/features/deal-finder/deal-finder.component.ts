@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
@@ -17,7 +18,7 @@ import { ProjectionChartComponent } from './components/projection-chart/projecti
 @Component({
   selector: 'app-deal-finder',
   standalone: true,
-  imports: [FormField, ProjectionChartComponent],
+  imports: [DatePipe, FormField, ProjectionChartComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './deal-finder.component.html',
   styleUrl: './deal-finder.component.scss',
