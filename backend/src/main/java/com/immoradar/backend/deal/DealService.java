@@ -119,7 +119,8 @@ public class DealService {
 
     private Deal rescore(Deal deal) {
         deal.refreshDerivedValues();
-        var market = marketService.analyze(deal.getLocation(), deal.getPrice(), deal.getSurface());
+        var market = marketService.analyze(
+                deal.getLocation(), deal.getPrice(), deal.getSurface(), deal.getPropertyType());
         deal.setMarketDeltaPercent(market.deltaPercentage().doubleValue());
         deal.setOpportunityScore(DealScoring.score(DealScoring.breakdown(deal, today())));
         return deal;

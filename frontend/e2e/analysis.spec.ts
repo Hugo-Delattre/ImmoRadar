@@ -66,6 +66,7 @@ test.beforeEach(async ({ page }) => {
       liquidityScore: 'A',
       averageSaleDelayDays: 45,
       advice: 'Bien positionné sous la médiane DVF du quartier. Forte tension locative.',
+      source: 'DVF', scope: '342 ventes · Appartements, Lyon 3e Arrondissement', periodStart: '2023-01-04', periodEnd: '2025-06-27',
     } });
   });
   await page.route('**/api/listings/extract', async route => {
@@ -130,8 +131,9 @@ test('shows a recoverable error when the API fails', async ({ page }) => {
 
 test('displays DVF market intelligence and negotiation recommendation', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Intelligence de marché · Lyon (69)')).toBeVisible();
-  await expect(page.getByText('Sous-évalué vs DVF')).toBeVisible();
+  await expect(page.getByText('Prix vs marché · Lyon (69)')).toBeVisible();
+  await expect(page.getByText(/342 ventes · Appartements, Lyon 3e Arrondissement/)).toBeVisible();
+  await expect(page.locator('.dvf-status-badge')).toContainText('Sous le prix du marché');
   await expect(page.getByText('-14.3%')).toBeVisible();
   await expect(page.getByText('Score A')).toBeVisible();
   await expect(page.getByText('Bien positionné sous la médiane DVF du quartier.')).toBeVisible();

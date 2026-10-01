@@ -182,6 +182,10 @@ export interface DvfMarketAnalysis {
   negotiationMargin: number;
   transactionsCount5Years: number;
   liquidityScore: string;
-  averageSaleDelayDays: number;
+  averageSaleDelayDays: number | null;
   advice: string;
+  source: 'DVF' | 'ESTIMATION';
+  scope: string;
+  periodStart: string | null;
+  periodEnd: string | null;
 }

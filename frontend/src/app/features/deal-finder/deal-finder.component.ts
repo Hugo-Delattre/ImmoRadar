@@ -186,12 +186,12 @@ export class DealFinderComponent {
   protected marketStatusBadge(status: DvfMarketAnalysis['marketStatus']): { text: string; cssClass: string } {
     switch (status) {
       case 'SOUS_EVALUE':
-        return { text: '⚡ Sous-évalué vs DVF (Opportunité)', cssClass: 'status-undervalued' };
+        return { text: '⚡ Sous le prix du marché', cssClass: 'status-undervalued' };
       case 'SUREVALUE':
-        return { text: '⚠️ Surévalué vs DVF (Marge requise)', cssClass: 'status-overvalued' };
+        return { text: '⚠️ Au-dessus du marché', cssClass: 'status-overvalued' };
       case 'ALIGNE':
       default:
-        return { text: '✓ Aligné prix du marché DVF', cssClass: 'status-aligned' };
+        return { text: '✓ Aligné sur le marché', cssClass: 'status-aligned' };
     }
   }
 
