@@ -1,11 +1,11 @@
 # ImmoRadar — état du produit et feuille de route
 
-Mise à jour : 1 octobre 2026. Objectif : aider à **présélectionner** des investissements locatifs vérifiables, sans présenter des données fictives ou des hypothèses comme des faits.
+Mise à jour : 2 octobre 2026. Objectif : aider à **présélectionner** des investissements locatifs vérifiables, sans présenter des données fictives ou des hypothèses comme des faits.
 
 ## Livré et vérifié dans le code
 
 - [x] Front Angular : catalogue, pagination, filtres, favoris, formulaire de création, états de chargement/erreur, simulation interactive, visualisation des projections et téléchargement PDF.
-- [x] Identité visuelle ImmoRadar : symbole maison/radar sur fond transparent, intégré à l'en-tête et à l'icône d'onglet.
+- [x] Identité visuelle vectorielle : paire de symboles SVG ImmoRadar/AutoRadar sur fond transparent ; ImmoRadar intégré à l'en-tête et à l'icône d'onglet. Explorations raster conservées séparément.
 - [x] API Spring : persistance des biens, recherche, simulation, PDF et validation des saisies ; tests unitaires et de contexte.
 - [x] Source d'annonce conservée avec le bien ; import opportuniste de métadonnées sur domaines autorisés. Aucun repli vers un bien fictif en cas d'échec ; saisie manuelle disponible.
 - [x] Agrégat de marché issu de transactions DVF via FoncierData, par **commune, type et tranche de surface**. Année, effectif et liens de provenance visibles ; absence de résultat si données insuffisantes.
@@ -22,10 +22,13 @@ Mise à jour : 1 octobre 2026. Objectif : aider à **présélectionner** des inv
 - [x] **Confiance du dossier — suivi déclaratif** : distinguer les données observées, estimées et documentées ; afficher les points encore à justifier et conserver les références. Aucun badge « pépite vérifiée » : même un dossier complet reste une déclaration utilisateur, pas une certification.
 - [ ] **Confiance du dossier — preuves contrôlées** : joindre les documents, historiser les révisions, structurer les références locatives et les diagnostics, vérifier les justificatifs avec une revue humaine. Le compteur actuel ne contrôle pas leur contenu et le PDF ne reprend pas encore ces références.
 - [ ] **Comparables de vente plus fins** : utiliser les transactions individuelles officielles DVF/DVF+ ou une source sous contrat, nettoyer les outliers, rapprocher type/surface/date/secteur et afficher un intervalle de confiance. L'agrégat communal actuel n'est qu'un repère.
-- [ ] **Tests full-stack reproductibles en CI** : créer un bien via le navigateur avec le backend et une base isolée, le retrouver après redémarrage et comparer les résultats API/PDF. Le smoke test live actuel dépend du réseau et d'un exemple préchargé ; il n'est pas ce test de CI.
+- [x] **Premier parcours full-stack isolé** : création d'un bien via Angular, persistance SQLite en mémoire, comparaison avec le vrai calcul Spring, conservation des chocs au refinancement et relecture après rechargement navigateur. Configuration Playwright dédiée et job CI ; seul le marché externe est simulé. Le résultat du job distant doit être contrôlé après le push.
+- [ ] **Tests full-stack étendus en CI** : retrouver le bien après redémarrage du backend sur base de test persistante, comparer les résultats API/PDF, couvrir favoris et justificatifs. La base en mémoire du premier parcours ne prouve pas la survie à un redémarrage du serveur.
 
 ## Priorité P1 — fiabilité financière
 
+- [x] **Test de robustesse exploratoire** : comparaison central/prudent/dégradé à financement et régime constants ; baisse du loyer, hausse des charges/taxe/assurance, surcoût des travaux et vacance additionnelle configurables. Calcul serveur sans mutation du bien, effort annuel en cas de déficit et écart au central ; tests de calcul, HTTP et interface. Les chocs ne sont pas des références de marché ni des probabilités.
+- [ ] Sauvegarder les réglages de robustesse et exporter la comparaison dans le PDF ; couvrir aussi assurance de prêt, coûts exceptionnels et sortie. Les réglages actuels restent locaux au composant et sont remis à zéro en changeant de bien.
 - [ ] Assurance de prêt, frais de garantie et de dossier, mensualités réelles, distinction charges récupérables/non récupérables et dépenses exceptionnelles.
 - [ ] Fiscalité paramétrable et actualisée : conditions d'éligibilité des régimes, plafonds et cas particuliers, amortissement correctement ventilé, revente et plus-value, fiscalité des distributions SCI. Faire relire les hypothèses par un professionnel.
 - [ ] TRI/VAN après coûts et impôts de sortie, scénarios de prix/loyer/taux, analyse de sensibilité et risques de perte ; traiter explicitement les flux de trésorerie et apports supplémentaires.
@@ -43,4 +46,4 @@ Mise à jour : 1 octobre 2026. Objectif : aider à **présélectionner** des inv
 
 Une opportunité ne sera qualifiée qu'avec une annonce encore disponible, un prix et une surface vérifiés, un loyer appuyé par des références locales, un budget de travaux et charges documenté, suffisamment de ventes comparables et plusieurs scénarios financiers incluant une marge de sécurité. Le produit actuel fournit un **outil de tri et de simulation**, pas encore ce niveau de preuve.
 
-Les tests Playwright actuels utilisent des réponses API simulées. Ils valident l'interface, pas la chaîne navigateur–Spring–base. Voir aussi [le parcours Angular](ANGULAR_ARCHITECTURE.md).
+La suite Playwright `e2e` utilise des réponses API simulées ; le parcours séparé `fullstack` démarre Angular et Spring sur une base isolée et couvre la création, la robustesse et la relecture navigateur. Les tests opt-in de marché dépendent des API externes. Voir aussi [le parcours Angular](ANGULAR_ARCHITECTURE.md).

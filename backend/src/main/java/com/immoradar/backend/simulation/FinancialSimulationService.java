@@ -23,7 +23,11 @@ public class FinancialSimulationService {
     }
 
     public SimulationResponse simulate(SimulationRequest request) {
-        var deal = dealService.getEntity(request.dealId());
+        return simulateForDeal(dealService.getEntity(request.dealId()), request);
+    }
+
+    // Scenario analysis passes a detached copy; it must never change the persisted property.
+    SimulationResponse simulateForDeal(Deal deal, SimulationRequest request) {
         var notaryFees = deal.getPrice().multiply(new BigDecimal("0.075"));
         var totalProjectCost = deal.getPrice().add(deal.getRenovationCost()).add(notaryFees);
         var loanAmount = totalProjectCost.subtract(request.downpayment()).max(BigDecimal.ZERO);

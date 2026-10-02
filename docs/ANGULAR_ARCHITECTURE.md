@@ -44,7 +44,7 @@ Le SVG natif suffit pour trois courbes alternatives simples et évite une dépen
 - Playwright : recherche, pagination, modification du financement, exploration clavier et déclenchement du téléchargement. `analysis.spec.ts` contrôle les réponses HTTP pour rendre ces tests déterministes.
 - Java : calcul financier et création du PDF. Le faux PDF des tests navigateur vérifie le téléchargement, pas la validité d'un document OpenPDF.
 
-Un test navigateur avec API simulée n'est pas un test full-stack. Le prochain niveau est de démarrer Spring et une base isolée dans la CI, créer un bien par le formulaire puis vérifier sa persistance et les résultats réels.
+Un test navigateur avec API simulée n'est pas un test full-stack. `playwright.fullstack.config.ts` démarre maintenant Spring sur SQLite en mémoire et Angular : `fullstack/stress-test.spec.ts` crée un bien par le formulaire, contrôle les résultats réels et la relecture après rechargement navigateur. Seul le marché externe est remplacé. Le redémarrage du backend et la comparaison PDF/API restent à couvrir.
 
 ## 5. Dette restante, explicitement
 
@@ -61,3 +61,11 @@ Lire `features/deal-finder/components/deal-evidence/`, puis `core/services/deal-
 Une écriture n'est pas annulée à la navigation. La méthode `save` capture donc l'identifiant avant l'appel et vérifie qu'il est toujours sélectionné avant d'appliquer la réponse. En cas d'échec, le texte saisi reste disponible. Un test Playwright vérifie la sauvegarde/relecture avec API simulée, un autre les estimations et le changement de sélection, un troisième l'erreur sans perte de saisie. Les tests Java HTTP vérifient séparément la persistance réelle sur une base SQLite en mémoire isolée.
 
 Le compteur est volontairement nommé « documentés », pas « certifiés ». Les changements de chiffres invalident les références associées ; la disponibilité expire après 30 jours. Les documents eux-mêmes ne sont pas téléversés : cette étape et leur revue restent dans la roadmap.
+
+## 7. Comparer des scénarios sans multiplier les synchronisations
+
+`components/stress-test/` reçoit une `SimulationRequest` obligatoire et calcule les variantes via un seul endpoint. Le calcul métier reste dans `StressTestService`, qui construit des copies détachées du bien et réutilise le simulateur financier ; aucun changement n'est persisté par ce POST de calcul.
+
+Un `computed` extrait l'identifiant du bien avec égalité scalaire. Le `linkedSignal` des chocs dépend de cet identifiant, pas directement de l'objet de financement : changer l'apport conserve les chocs personnalisés ; changer de bien rétablit les valeurs initiales. Un test a détecté la réinitialisation indésirable lors d'un refinancement et couvre maintenant cette régression.
+
+Les quatre champs utilisent les Signal Forms avec bornes et validation de nombres finis. `rxResource` n'envoie une requête que si ce formulaire est valide ; la lecture précédente est désabonnée lors d'une modification. Le composant distingue chargement, résultat et erreur avec relance. Les tests Vitest vérifient conservation/réinitialisation des réglages et saisies invalides ; Playwright vérifie les montants affichés avec API simulée ; les tests Java HTTP utilisent une base isolée et le vrai moteur de calcul.

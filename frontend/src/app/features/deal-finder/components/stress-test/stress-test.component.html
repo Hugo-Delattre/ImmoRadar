@@ -1,0 +1,115 @@
+<section
+  class="stress-card"
+  aria-label="Test de robustesse"
+  [attr.aria-busy]="comparison.isLoading()"
+>
+  <header>
+    <div>
+      <span class="eyebrow">Et si les hypothèses étaient moins favorables ?</span>
+      <h3>Test de robustesse</h3>
+    </div>
+    <span class="server-label">Calcul serveur</span>
+  </header>
+  <p class="intro">
+    Compare les mêmes financement et régime fiscal avec des chocs cumulés. Les réglages ci-dessous
+    s’appliquent au prudent ; le dégradé les double. Ce ne sont pas des prévisions.
+  </p>
+  <form
+    class="settings-grid"
+    aria-label="Hypothèses de robustesse"
+    (submit)="$event.preventDefault()"
+  >
+    @for (control of controls; track control.key) {
+      <label
+        ><span>{{ control.label }}</span>
+        <div class="input-unit">
+          <input type="number" step="1" [formField]="settingsForm[control.key]" /><small>{{
+            control.unit
+          }}</small>
+        </div>
+        <small>De 0 à {{ control.limit }}</small></label
+      >
+    }
+  </form>
+  @if (settingsForm().invalid()) {
+    <p role="alert" class="error">
+      Renseigne les quatre chocs dans les bornes indiquées pour calculer les scénarios.
+    </p>
+  } @else if (comparison.isLoading()) {
+    <p role="status">Calcul des trois scénarios…</p>
+  } @else if (comparison.error()) {
+    <div class="error" role="alert">
+      Comparaison indisponible. Vérifie aussi les hypothèses de financement.
+    </div>
+    <button type="button" (click)="comparison.reload()">Réessayer la comparaison</button>
+  } @else if (comparison.hasValue()) {
+    <div class="scenarios">
+      @for (scenario of comparison.value().scenarios; track scenario.key) {
+        <article
+          [class.adverse]="scenario.key === 'ADVERSE'"
+          [attr.aria-label]="'Scénario ' + scenario.label"
+        >
+          <h4>{{ scenario.label }}</h4>
+          <span class="metric-label">Cash-flow mensuel · année 1</span>
+          <strong class="cash-flow" [class.negative]="scenario.monthlyCashFlow < 0">{{
+            signed(scenario.monthlyCashFlow)
+          }}</strong>
+          <p class="delta">
+            {{
+              scenario.key === 'CENTRAL'
+                ? 'Tes hypothèses actuelles'
+                : signed(scenario.deltaFromCentral) + ' / mois vs central'
+            }}
+          </p>
+          <dl>
+            <div>
+              <dt>Loyer hors charges</dt>
+              <dd>{{ currency(scenario.monthlyRent) }}</dd>
+            </div>
+            <div>
+              <dt>Vacance</dt>
+              <dd>{{ scenario.vacancyRate }} %</dd>
+            </div>
+            <div>
+              <dt>Charges / mois</dt>
+              <dd>{{ currency(scenario.monthlyCharges) }}</dd>
+            </div>
+            <div>
+              <dt>Taxe foncière / an</dt>
+              <dd>{{ currency(scenario.propertyTax) }}</dd>
+            </div>
+            <div>
+              <dt>Assurance / an</dt>
+              <dd>{{ currency(scenario.insuranceAnnual) }}</dd>
+            </div>
+            <div>
+              <dt>Travaux</dt>
+              <dd>{{ currency(scenario.renovationCost) }}</dd>
+            </div>
+            <div>
+              <dt>Coût total</dt>
+              <dd>{{ currency(scenario.totalProjectCost) }}</dd>
+            </div>
+            <div>
+              <dt>Crédit / mois</dt>
+              <dd>{{ currency(scenario.monthlyMortgage) }}</dd>
+            </div>
+            <div>
+              <dt>Loyer d’équilibre</dt>
+              <dd>{{ currency(scenario.breakEvenRent) }}</dd>
+            </div>
+          </dl>
+          <footer>
+            <span>Effort annuel si déficit</span
+            ><strong>{{ currency(scenario.annualCashShortfall) }}</strong
+            ><small>Année 1 · hors apport et dépenses exceptionnelles</small>
+          </footer>
+        </article>
+      }
+    </div>
+    <p class="notice">
+      {{ comparison.value().notice }} Une majoration de travaux n’a aucun effet si le budget initial
+      est nul : renseigne d’abord un devis crédible.
+    </p>
+  }
+</section>

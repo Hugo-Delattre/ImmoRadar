@@ -15,11 +15,12 @@ import {
 import { DealService } from '../../core/services/deal.service';
 import { ProjectionChartComponent } from './components/projection-chart/projection-chart.component';
 import { DealEvidenceComponent } from './components/deal-evidence/deal-evidence.component';
+import { StressTestComponent } from './components/stress-test/stress-test.component';
 
 @Component({
   selector: 'app-deal-finder',
   standalone: true,
-  imports: [DatePipe, FormField, ProjectionChartComponent, DealEvidenceComponent],
+  imports: [DatePipe, FormField, ProjectionChartComponent, DealEvidenceComponent, StressTestComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './deal-finder.component.html',
   styleUrl: './deal-finder.component.scss',

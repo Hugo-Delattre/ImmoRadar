@@ -2,6 +2,33 @@ import { expect, test } from '@playwright/test';
 
 // Deterministic UI contract tests. The backend's financial rules are tested in Java.
 test.beforeEach(async ({ page }) => {
+  await page.route('**/api/simulations/stress-test', async (route) => {
+    const request = route.request().postDataJSON();
+    await route.fulfill({
+      json: {
+        dealId: request.base.dealId,
+        notice: 'Tests d’hypothèses, pas prévisions.',
+        scenarios: ['CENTRAL', 'PRUDENT', 'ADVERSE'].map((key, severity) => ({
+          key,
+          label: ['Central', 'Prudent', 'Dégradé'][severity],
+          monthlyRent: 1200 * (1 - (severity * request.rentDropPercent) / 100),
+          monthlyCharges: 100,
+          propertyTax: 800,
+          renovationCost: 10000,
+          insuranceAnnual: 180,
+          vacancyRate: request.base.vacancyRate + severity * request.vacancyIncreasePoints,
+          totalProjectCost: 200000,
+          monthlyMortgage: 850,
+          monthlyCashFlow: request.base.downpayment / 100 - severity * request.rentDropPercent * 20,
+          deltaFromCentral: -severity * request.rentDropPercent * 20,
+          annualCashShortfall:
+            Math.max(0, severity * request.rentDropPercent * 20 - request.base.downpayment / 100) *
+            12,
+          breakEvenRent: 1100,
+        })),
+      },
+    });
+  });
   const evidence = new Map<string, Record<string, unknown>>();
   await page.route('**/api/deals/*/evidence{,/**}', async (route) => {
     const path = new URL(route.request().url()).pathname.split('/');
@@ -195,6 +222,36 @@ test.beforeEach(async ({ page }) => {
       },
     });
   });
+});
+
+test('compares adverse scenarios and recalculates when financing or shocks change', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const stress = page.getByRole('region', { name: 'Test de robustesse', exact: true });
+  const adverse = stress.getByRole('article', { name: 'Scénario Dégradé' });
+  await expect(adverse.locator('.cash-flow')).toContainText('−100');
+  await stress.getByLabel('Baisse du loyer', { exact: false }).fill('20');
+  await expect(adverse.locator('.cash-flow')).toContainText('−500');
+  await page.getByLabel('Apport personnel').fill('50000');
+  await expect(adverse.locator('.cash-flow')).toContainText('−300');
+  await stress.getByLabel('Baisse du loyer', { exact: false }).fill('41');
+  await expect(stress.getByRole('alert')).toContainText('bornes');
+  await expect(adverse).not.toBeVisible();
+  await stress.getByLabel('Baisse du loyer', { exact: false }).fill('20');
+  await page.getByRole('button', { name: 'Suivant', exact: true }).click();
+  await expect(page.getByText('Page 2 sur 2')).toBeVisible();
+  await expect(stress.getByLabel('Baisse du loyer', { exact: false })).toHaveValue('10');
+});
+
+test('shows a recoverable stress test error', async ({ page }) => {
+  await page.route('**/api/simulations/stress-test', (route) =>
+    route.fulfill({ status: 503, json: {} }),
+  );
+  await page.goto('/');
+  const stress = page.getByRole('region', { name: 'Test de robustesse', exact: true });
+  await expect(stress.getByRole('alert')).toContainText('Comparaison indisponible');
+  await expect(stress.getByRole('button', { name: 'Réessayer la comparaison' })).toBeVisible();
 });
 
 test('paginates and returns to page one after a new search', async ({ page }) => {

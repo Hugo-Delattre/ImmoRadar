@@ -5,7 +5,7 @@
   <header class="topbar">
     <a class="brand" href="/" aria-label="ImmoRadar, accueil">
       <span class="brand-mark" aria-hidden="true">
-        <img src="/immoradar-mark.png" alt="" width="46" height="46" />
+        <img src="/immoradar-mark.svg" alt="" width="46" height="46" />
       </span>
       <span><strong>ImmoRadar</strong><small>Investment intelligence</small></span>
     </a>
@@ -336,6 +336,8 @@
               }
             </div>
           </div>
+
+          @if (simulationRequest(); as request) { <app-stress-test [request]="request" /> }
 
           <div class="description-card">
             <span>Note d’analyse</span>

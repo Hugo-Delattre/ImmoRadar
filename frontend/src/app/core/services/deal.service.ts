@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { StressTestRequest, StressTestResponse } from '../models/stress-test.model';
 import {
   CreateDealRequest,
   Deal,
@@ -42,6 +43,10 @@ export class DealService {
 
   calculateSimulation(request: SimulationRequest) {
     return this.http.post<SimulationResult>('/api/simulations', request);
+  }
+
+  compareStressScenarios(request: StressTestRequest) {
+    return this.http.post<StressTestResponse>('/api/simulations/stress-test', request);
   }
 
   generateInvestmentReport(request: SimulationRequest): Promise<Blob> {
