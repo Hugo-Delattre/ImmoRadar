@@ -56,6 +56,8 @@ test('creates a property through Angular, compares real Spring calculations and 
   expect(stored.monthlyRent).toBe(900);
   expect(stored.renovationCost).toBe(10000);
   await page.reload();
+  // Each scenario owns a different fixture; do not rely on equal-price catalogue ordering.
+  await page.getByPlaceholder('Ville ou département').fill('Testville');
   await expect(page.getByRole('heading', { name: 'Bien de test isolé' })).toBeVisible();
   await expect(stress.getByLabel('Baisse du loyer', { exact: false })).toHaveValue('10');
   await expect(centralRent).toContainText('900');

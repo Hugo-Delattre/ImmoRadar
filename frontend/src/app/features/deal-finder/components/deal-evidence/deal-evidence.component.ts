@@ -4,6 +4,7 @@ import {
   inject,
   input,
   linkedSignal,
+  output,
   signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -35,6 +36,7 @@ import {
 })
 export class DealEvidenceComponent {
   readonly dealId = input.required<string>();
+  readonly changed = output<void>();
   private readonly service = inject(DealEvidenceService);
   protected readonly evidence = rxResource({
     params: () => this.dealId(),
@@ -99,6 +101,7 @@ export class DealEvidenceComponent {
         // Selection may change while the request is in flight; never apply it to another property.
         if (this.dealId() === dealId) {
           this.evidence.value.set(result);
+          this.changed.emit();
           this.editing.set(null);
           this.savedMessage.set(`${check.label} : contrôle enregistré.`);
         }

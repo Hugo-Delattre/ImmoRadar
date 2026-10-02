@@ -16,11 +16,12 @@ import { DealService } from '../../core/services/deal.service';
 import { ProjectionChartComponent } from './components/projection-chart/projection-chart.component';
 import { DealEvidenceComponent } from './components/deal-evidence/deal-evidence.component';
 import { StressTestComponent } from './components/stress-test/stress-test.component';
+import { DealQualificationComponent } from './components/deal-qualification/deal-qualification.component';
 
 @Component({
   selector: 'app-deal-finder',
   standalone: true,
-  imports: [DatePipe, FormField, ProjectionChartComponent, DealEvidenceComponent, StressTestComponent],
+  imports: [DatePipe, FormField, ProjectionChartComponent, DealEvidenceComponent, StressTestComponent, DealQualificationComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './deal-finder.component.html',
   styleUrl: './deal-finder.component.scss',
@@ -40,6 +41,9 @@ export class DealFinderComponent {
   protected readonly favoritePendingId = signal<string | null>(null);
   protected readonly favoriteError = signal<string | null>(null);
   protected readonly selectedDealId = signal<string | null>(null);
+  protected readonly evidenceRevision = signal(0);
+
+  protected evidenceChanged(): void { this.evidenceRevision.update(n => n + 1); }
   protected readonly isDownloadingReport = signal(false);
   protected readonly reportError = signal<string | null>(null);
 

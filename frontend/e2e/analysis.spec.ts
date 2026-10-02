@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 // Deterministic UI contract tests. The backend's financial rules are tested in Java.
 test.beforeEach(async ({ page }) => {
+  await page.route('**/api/deals/*/rental-references', (route) => route.fulfill({ json: [] }));
   await page.route('**/api/simulations/stress-test', async (route) => {
     const request = route.request().postDataJSON();
     await route.fulfill({

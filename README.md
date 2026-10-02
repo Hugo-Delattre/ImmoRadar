@@ -16,6 +16,7 @@ ImmoRadar est un cockpit local d'analyse d'investissements immobiliers : catalog
 - [x] Tests Java, tests Angular et tests Playwright à API simulée.
 - [x] Dossier de fiabilité par bien : dix contrôles persistés, observations séparées des estimations, notes, références HTTPS et dates. Le compteur reflète tes justificatifs déclarés, pas une vérification indépendante.
 - [x] Test de robustesse central/prudent/dégradé : chocs modifiables sur loyer, vacance, coûts récurrents et travaux ; recalcul du crédit à apport constant, écart de cash-flow et effort annuel si déficit. Ce sont des hypothèses exploratoires, pas des loyers de marché ni des probabilités.
+- [x] Qualification conditionnelle « bonne affaire potentielle » : références locatives déclarées persistées, règles bloquantes de dossier/marché/loyer/prix/trésorerie, chocs fixes serveur et export JSON traçable. Ni authentification des pièces ni certification indépendante ; [méthode et limites](docs/QUALIFICATION.md).
 - [ ] Collecte automatique fiable et durable des annonces : dépend de l'accès autorisé aux portails ou d'une autre source contractuelle.
 - [ ] Estimation du loyer par comparables vérifiés, assurance emprunteur, frais de cession, plus-value, fiscalité personnelle et capacité bancaire.
 - [x] Premier test navigateur full-stack isolé : création d'un bien, calcul réel de robustesse, relecture après rechargement ; job CI dédié. Le marché externe est exclu de ce test hors ligne.
@@ -31,6 +32,7 @@ Les cinq biens chargés au démarrage sont des **exemples fictifs**. Leur prix, 
 4. Dans « Fiabilité du dossier », renseigner les références et dates de contrôle. Seuls les justificatifs renseignés (ou une copropriété explicitement non applicable) complètent le dossier. Une estimation reste à confirmer ; la disponibilité est à recontrôler après 30 jours. Il s'agit d'une règle de fraîcheur du produit, pas d'une norme réglementaire.
 5. Faire varier l'apport, le taux et les hypothèses. Le cash-flow et le loyer d'équilibre sont recalculés côté serveur. Dans « Test de robustesse », comparer les trois scénarios et ajuster les chocs du prudent ; le dégradé les double. Un budget travaux nul reste nul même après majoration : saisir un devis crédible est indispensable. Le déficit annualisé reflète l'année 1, hors apport et dépenses exceptionnelles. Ces réglages ne sont pas encore sauvegardés ni exportés dans le PDF.
 6. Télécharger le PDF, puis expliquer ses limites : fiscalité simplifiée, revente brute, absence de validation de la capacité d'emprunt. Les notes de justificatifs restent dans l'interface et ne sont pas encore incluses dans le PDF.
+7. Dans « Qualifier l'opportunité », saisir au moins trois références locatives pertinentes dont un bail déclaré, puis lancer l'évaluation explicite. Tous les critères doivent être satisfaits ; les exemples fictifs et les marchés insuffisants restent bloqués. Le dossier requis est plus frais que le compteur général (disponibilité ≤7 jours). Exporter le JSON pour retrouver valeurs, références et hypothèses ; changer le financement ou le dossier impose de recalculer. Le résultat n'est jamais une garantie ou une certification indépendante.
 
 L'architecture Angular (signals, Signal Forms, ressources, états d'erreur) est expliquée dans [le guide Angular](docs/ANGULAR_ARCHITECTURE.md). Les priorités restantes sont dans [la roadmap](docs/PRD.md).
 
@@ -104,7 +106,7 @@ cd frontend
 npx playwright test --config playwright.fullstack.config.ts
 ```
 
-Java 25, Maven et npm doivent être accessibles ; les ports 8080 et 4300 doivent être libres. Aucun serveur existant n'est réutilisé. Le test crée un bien fictif par le formulaire, vérifie ses scénarios réellement calculés, l'absence de mutation du loyer et sa relecture après rechargement du navigateur. Il ne prouve pas la persistance après redémarrage du backend ni l'équivalence PDF/API. Seule la consultation du marché externe est simulée. Le job CI dédié exécute ce même parcours ; son résultat distant doit être contrôlé après le push.
+Java 25, Maven et npm doivent être accessibles ; les ports 8080 et 4300 doivent être libres. Aucun serveur existant n'est réutilisé. Les tests créent des biens fictifs isolés, vérifient les scénarios réellement calculés, l'absence de mutation du loyer, les références locatives persistées, la qualification refusée sans marché et l'export JSON. Après rechargement, une recherche retrouve chaque fixture sans dépendre de l'ordre des biens de même prix. Ils ne prouvent pas la persistance après redémarrage du backend ni l'équivalence PDF/API. Seule la consultation du panneau marché externe est simulée ; la qualification serveur de l'immeuble ne peut pas avoir de repère de vente individuelle et refuse le badge. Le job CI dédié exécute ces parcours ; son résultat distant doit être contrôlé après le push.
 
 ![Test de robustesse — bien fictif du parcours isolé](docs/stress-test.png)
 

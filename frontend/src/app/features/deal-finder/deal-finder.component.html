@@ -225,7 +225,7 @@
             <section class="dvf-card"><h3>Comparaison indisponible</h3><p>Le service de prix de marché ne répond pas. Aucune estimation n'a été substituée.</p><button type="button" (click)="marketResource.reload()">Réessayer</button></section>
           }
 
-          <app-deal-evidence [dealId]="deal.id" />
+          <app-deal-evidence [dealId]="deal.id" (changed)="evidenceChanged()" />
 
           <div class="simulator-heading">
             <div><span class="section-index">02</span><h2>Studio de financement</h2></div>
@@ -337,7 +337,10 @@
             </div>
           </div>
 
-          @if (simulationRequest(); as request) { <app-stress-test [request]="request" /> }
+          @if (simulationRequest(); as request) {
+            <app-stress-test [request]="request" />
+            <app-deal-qualification [deal]="deal" [request]="request" [evidenceRevision]="evidenceRevision()" />
+          }
 
           <div class="description-card">
             <span>Note d’analyse</span>

@@ -1,0 +1,196 @@
+<section
+  class="qualification"
+  aria-label="Qualification de l'opportunité"
+  [attr.aria-busy]="busy()"
+>
+  <header>
+    <div>
+      <span class="eyebrow">Du signal à la décision</span>
+      <h3>Qualifier l'opportunité</h3>
+    </div>
+    <span class="badge">Pas une certification</span>
+  </header>
+  <p class="intro">
+    Croise ton dossier, les références locatives et le marché avec une marge de sécurité. Une bonne
+    affaire potentielle reste à faire vérifier : aucune déclaration ni aucun document n'est
+    authentifié par l'app.
+  </p>
+  <div class="toolbar">
+    <label
+      >Mode locatif évalué
+      <select [formField]="modeForm.rentalMode">
+        <option value="FURNISHED">Meublé</option>
+        <option value="UNFURNISHED">Non meublé</option>
+      </select>
+    </label>
+    <button type="button" class="primary" (click)="assess()" [disabled]="busy() || saving()">
+      {{ busy() ? 'Évaluation…' : 'Évaluer ce bien' }}
+    </button>
+  </div>
+  <p class="intro">
+    Politique v1 : 3 références locales récentes dont 1 bail déclaré ; dossier complet ;
+    disponibilité ≤7 jours ; marché ≥20 ventes ; coût prudent ≤90 % du repère communal ; cash-flow
+    prudent ≥100 € et dégradé ≥0 €. Seuils de tri internes, pas normes officielles.
+  </p>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (result(); as assessment) {
+    <div class="verdict" [class.potential]="assessment.outcome === 'POTENTIAL'" role="status">
+      <span class="eyebrow"
+        >{{ assessment.policyVersion }} ·
+        {{ assessment.assessedAt | date: 'dd/MM/yyyy HH:mm' }}</span
+      >
+      <h4>{{ outcomeLabels[assessment.outcome] }}</h4>
+      <p>
+        Apport {{ currency(assessment.assumptions.base.downpayment) }} · crédit
+        {{ assessment.assumptions.base.interestRate }} % /
+        {{ assessment.assumptions.base.loanTermYears }} ans ·
+        {{ assessment.assumptions.base.taxRegime }}. Résultat lié à ces hypothèses.
+      </p>
+      <button type="button" (click)="export()">Exporter la décision (JSON)</button>
+    </div>
+    <ol class="checks">
+      @for (check of assessment.checks; track check.key) {
+        <li [class.pass]="check.state === 'PASS'" [class.fail]="check.state === 'FAIL'">
+          <div>
+            <strong>{{ check.label }}</strong
+            ><span>{{ stateLabels[check.state] }}</span>
+          </div>
+          <p>{{ check.detail }}</p>
+        </li>
+      }
+    </ol>
+    @if (assessment.rentalReferences.length) {
+      <details>
+        <summary>Pourquoi ces références sont retenues ou exclues</summary>
+        @for (item of assessment.rentalReferences; track item.reference.id) {
+          <p>
+            <a [href]="item.reference.sourceUrl" target="_blank" rel="noopener noreferrer"
+              >{{ currency(item.reference.monthlyRent) }} HC · {{ item.reference.surface }} m²</a
+            >
+            — {{ item.reason }}
+          </p>
+        }
+      </details>
+    }
+    <p class="warning">{{ assessment.notice }}</p>
+  } @else if (!busy()) {
+    <p class="feedback" role="status">
+      Évaluation à calculer ou à recalculer après modification du dossier, des références ou du
+      financement.
+    </p>
+  }
+  <div class="references">
+    <header>
+      <h4>Références de loyers hors charges</h4>
+      <button type="button" (click)="editorOpen.set(!editorOpen())">
+        {{ editorOpen() ? 'Fermer la saisie' : 'Ajouter une référence' }}
+      </button>
+    </header>
+    <p class="intro">
+      Sources saisies manuellement, jamais inventées ni récupérées automatiquement. Même commune
+      (libellé identique), type et mode locatif, surface ±20 %, ≤180 jours. Distingue loyer demandé
+      et bail réel ; explique le quartier, l'état et la provenance sans données personnelles.
+    </p>
+    @if (references.isLoading()) {
+      <p role="status">Chargement des références…</p>
+    } @else if (references.error()) {
+      <p class="error" role="alert">Références indisponibles.</p>
+      <button type="button" (click)="references.reload()">Recharger les références</button>
+    } @else if (references.hasValue()) {
+      <ul class="reference-list">
+        @for (ref of references.value(); track ref.id) {
+          <li>
+            <div>
+              <a [href]="ref.sourceUrl" target="_blank" rel="noopener noreferrer"
+                >{{ currency(ref.monthlyRent) }} HC · {{ ref.surface }} m²</a
+              ><small
+                >{{ ref.location }} ·
+                {{ ref.rentalMode === 'FURNISHED' ? 'Meublé' : 'Non meublé' }} ·
+                {{ ref.kind === 'ACTUAL_LEASE' ? 'Bail déclaré' : 'Loyer demandé' }} ·
+                {{ ref.observedOn | date: 'dd/MM/yyyy' }}</small
+              >
+              <p>{{ ref.note }}</p>
+            </div>
+            <button
+              type="button"
+              [disabled]="saving()"
+              [attr.aria-label]="'Supprimer la référence ' + ref.sourceUrl"
+              (click)="remove(ref.id)"
+            >
+              Supprimer
+            </button>
+          </li>
+        } @empty {
+          <li>Aucune référence enregistrée pour ce bien.</li>
+        }
+      </ul>
+    }
+    @if (saveError()) {
+      <p class="error" role="alert">{{ saveError() }}</p>
+    }
+    @if (editorOpen()) {
+      <form (submit)="$event.preventDefault(); save()" class="reference-editor">
+        <label class="full"
+          >Lien de la référence<input
+            type="url"
+            [formField]="referenceForm.sourceUrl"
+            placeholder="https://…"
+        /></label>
+        <label
+          >Date d'observation<input type="date" [formField]="referenceForm.observedOn"
+        /></label>
+        <label>Commune de la référence<input [formField]="referenceForm.location" /></label>
+        <label
+          >Type de bien<select [formField]="referenceForm.propertyType">
+            <option value="Apartment">Appartement</option>
+            <option value="Studio">Studio</option>
+            <option value="House">Maison</option>
+            <option value="Building">Immeuble</option>
+          </select></label
+        >
+        <label
+          >Surface de la référence (m²)<input type="number" [formField]="referenceForm.surface"
+        /></label>
+        <label
+          >Loyer mensuel hors charges (€)<input
+            type="number"
+            [formField]="referenceForm.monthlyRent"
+        /></label>
+        <label
+          >Mode de location<select [formField]="referenceForm.rentalMode">
+            <option value="FURNISHED">Meublé</option>
+            <option value="UNFURNISHED">Non meublé</option>
+          </select></label
+        >
+        <label class="full"
+          >Nature du loyer<select [formField]="referenceForm.kind">
+            <option value="ASKING_RENT">Loyer demandé dans une annonce</option>
+            <option value="ACTUAL_LEASE">Loyer d'un bail réel — déclaration à vérifier</option>
+          </select></label
+        >
+        <label class="full"
+          >Contexte et provenance<textarea
+            [formField]="referenceForm.note"
+            rows="3"
+            placeholder="Quartier, état, document consulté ; aucune donnée personnelle."
+          ></textarea>
+        </label>
+        @if (referenceForm().invalid()) {
+          <p class="intro full">
+            Tous les champs sont requis : lien HTTPS, date passée ou actuelle, surface et loyer
+            positifs, contexte. Vérifie la saisie.
+          </p>
+        }
+        <button
+          type="submit"
+          class="primary full"
+          [disabled]="saving() || referenceForm().invalid()"
+        >
+          {{ saving() ? 'Enregistrement…' : 'Enregistrer la référence' }}
+        </button>
+      </form>
+    }
+  </div>
+</section>
