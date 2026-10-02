@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" role="img" aria-labelledby="title">
+  <title id="title">AutoRadar</title>
+  <path d="M64 38a25 25 0 1 1-27-25" stroke="#5DE2B4" stroke-width="5" stroke-linecap="round"/>
+  <path d="m23 43 6-15h22l6 15v16H23V43Z" fill="#5DE2B4"/>
+  <path d="m29 40 4-8h14l4 8H29Z" fill="#103A2C"/>
+  <path d="M29 48h6m10 0h6M26 59v4m28-4v4" stroke="#103A2C" stroke-width="4" stroke-linecap="round"/>
+  <path d="m41 39 20-20" stroke="#C4F265" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="63" cy="17" r="6" fill="#C4F265"/>
+</svg>
